@@ -706,9 +706,18 @@ if(!HEADLESS){
     ctx.globalAlpha=pulse*0.6; for(let r=-2;r<=2;r++){ ctx.fillRect(bx+r*8-0.5, by, 1, RAIL_Y-by); }
     ctx.restore(); }
   function draw(){
-    ctx.fillStyle='#05060f'; ctx.fillRect(0,0,RUN.w,RUN.h);
-    // starfield
-    for(const st of s.stars){ ctx.fillStyle= st.sp>0.4?'#ffffff': st.sp>0.28?'#9fb4d6':'#5a6a8c'; ctx.fillRect(Math.round(st.x),Math.round(st.y),1,1); }
+    // deep-space gradient + a faint nebula band drifting behind the swarm
+    const bg=ctx.createLinearGradient(0,0,0,RUN.h);
+    bg.addColorStop(0,'#0a0820'); bg.addColorStop(0.5,'#05060f'); bg.addColorStop(1,'#0b0518');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,RUN.w,RUN.h);
+    const ny=((s.tMs*0.006)%(RUN.h+120))-60;
+    const neb=ctx.createRadialGradient(RUN.w*0.5,ny,4, RUN.w*0.5,ny,90);
+    neb.addColorStop(0,'rgba(90,60,150,0.18)'); neb.addColorStop(1,'rgba(90,60,150,0)');
+    ctx.fillStyle=neb; ctx.fillRect(0,0,RUN.w,RUN.h);
+    // starfield (twinkle on the fastest layer)
+    for(const st of s.stars){ let c= st.sp>0.4?'#ffffff': st.sp>0.28?'#9fb4d6':'#5a6a8c';
+      if(st.sp>0.4 && (Math.floor(s.tMs/220)+((st.x|0)))%5===0) c='#7fd7ff';
+      ctx.fillStyle=c; ctx.fillRect(Math.round(st.x),Math.round(st.y),1,1); }
     // arcade HUD strip
     ctx.fillStyle='#7fd7ff'; ctx.font='7px "Jersey 15",monospace'; ctx.textAlign='left';
     ctx.fillText('1UP', 4, 8); ctx.fillStyle='#fff'; ctx.fillText(pad(s.score,6), 4, 16);
