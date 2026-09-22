@@ -64,6 +64,11 @@
   .ctl:focus-visible{outline:3px solid var(--electric);outline-offset:2px}
   .ctl.fire{font-size:13px;color:#fff;background:var(--plum)}
   .ctl.fire:active,.ctl.fire.on{background:var(--plum-deep)}
+  /* WING two-thumb rail controls: L/R under the left thumb, FIRE under the right (classic shooter; no up/down) */
+  .controls.twothumb{width:100%;max-width:560px;margin:0 auto;justify-content:space-between;background:transparent;box-shadow:none;gap:var(--s4);padding:4px 10px!important}
+  .controls.twothumb .cluster.move{display:flex;gap:14px}
+  .controls.twothumb .ctl.big{width:68px;height:58px;font-size:24px;border-radius:14px}
+  .controls.twothumb .ctl.fire{width:88px;height:88px;border-radius:50%;font-size:18px}
   #padU{grid-area:1/2/2/3} #padL{grid-area:2/1/3/2} #padFire{grid-area:2/2/3/3} #padR{grid-area:2/3/3/4} #padD{grid-area:3/2/4/3}
   .foot{text-align:center;min-height:28px}
   .foot .tag{font-family:var(--disp);font-size:13px;color:var(--muted);letter-spacing:.5px}
@@ -152,14 +157,12 @@ body:not(.mode-paid) .facts{display:none!important}
       <canvas id="game" width="224" height="288" aria-label="WING 106 play area."></canvas>
     </main>
 
-    <div class="controls" aria-label="Controls">
-      <div class="dpad">
-        <button class="ctl" id="padU" type="button" aria-label="Up">▲</button>
-        <button class="ctl" id="padL" type="button" aria-label="Left">◀</button>
-        <button class="ctl fire" id="padFire" type="button" aria-label="Fire">GO</button>
-        <button class="ctl" id="padR" type="button" aria-label="Right">▶</button>
-        <button class="ctl" id="padD" type="button" aria-label="Down">▼</button>
+    <div class="controls twothumb" aria-label="Controls">
+      <div class="cluster move">
+        <button class="ctl big" id="padL" type="button" aria-label="Move left">◀</button>
+        <button class="ctl big" id="padR" type="button" aria-label="Move right">▶</button>
       </div>
+      <button class="ctl fire" id="padFire" type="button" aria-label="Fire">FIRE</button>
     </div>
 
     <footer class="foot">
