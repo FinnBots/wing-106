@@ -98,6 +98,18 @@
   .panel .ghostbtn:last-child{margin-bottom:0}
   @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
 </style>
+<style id="pv-optimise">
+/* Portrait play-area optimisation (2026-09-22): reclaim vertical chrome so the
+   height-bound canvas grows on tablet/desktop (widening .wrap can't help portrait). */
+.wrap{padding-top:4px!important;padding-bottom:4px!important;gap:4px!important}
+body:not(.mode-paid) .facts{display:none!important}
+.topbar{min-height:0!important}
+.title{font-size:18px!important}
+.controls{padding:2px 0!important}
+.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,38px)!important}
+@media (min-height:720px){.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,40px)!important}}
+.foot{font-size:11px!important;padding:2px 0!important}
+</style>
 </head>
 <body>
   <div class="wrap">
