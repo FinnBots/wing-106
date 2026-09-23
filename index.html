@@ -268,7 +268,7 @@ function newRun(){
     shots:[], ebullets:[], enemies:[], parts:[], rescues:[],
     beam:null, captureT:0, msg:null, msgT:0,
     spd:1, diveTimer:1800, clearBeat:0,
-    nextExtra:30000, extraStep:70000,
+    nextExtra:20000, extraStep:70000,   // arcade Galaga default: 1st bonus 20,000, then every 70,000
     stars: makeStars(),
     inDX:0, inFire:false, _fireCd:0,
     challenge:false, chGroupKills:[0,0,0,0,0], chDestroyed:0, chBonusPer:1000 };
@@ -510,7 +510,7 @@ function collideShots(s,ev){
 function killEnemy(s,e,ev,wasIdle){
   e.st='dead'; e.left=false; s.kills++; explosion(s,e.x,e.y); ev.kill=e.type;
   if(s.challenge){
-    s.score += e.type==='TICK'?100 : e.type==='DOME'?160 : 400;
+    s.score += 100;                     // arcade: every challenging-stage enemy is a flat 100
     s.chGroupKills[e.grp]++; s.chDestroyed++;
     if(s.chGroupKills[e.grp]===8){ s.score += s.chBonusPer; ev.groupBonus=true; }
     return;
