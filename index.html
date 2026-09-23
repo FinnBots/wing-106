@@ -459,6 +459,10 @@ function maybeEnemyFire(s,e,dt){
 function updateBeam(s,dt,ev){
   if(!s.beam) return;
   const b=s.beam, e=b.boss, P=s.player;
+  // Arcade Galaga: shooting the Boss while its tractor beam is out CANCELS the beam.
+  // Without this the beam outlived its owner, kept pulling, and doCapture then
+  // resurrected the destroyed Boss into 'reslot' — a corpse grabbing your ship.
+  if(!e || e.st==='dead'){ s.beam=null; s.captureT=0; return; }
   b.t-=dt;
   const half=26;
   if(P.alive && !P.dead && !P.dual && P.invuln<=0 && Math.abs(P.x-e.x)<half){
@@ -469,6 +473,7 @@ function updateBeam(s,dt,ev){
 }
 function doCapture(s,e,ev){
   s.beam=null; s.captureT=0;
+  if(!e || e.st==='dead') return;      // no capture from a destroyed Boss — never resurrect one
   const P=s.player;
   P.alive=false; P.dead=true; s.lives--;
   e.captive=true; e.st='reslot'; e.rx0=e.x; e.ry0=e.y; e.t=0;
@@ -509,6 +514,7 @@ function collideShots(s,ev){
 }
 function killEnemy(s,e,ev,wasIdle){
   e.st='dead'; e.left=false; s.kills++; explosion(s,e.x,e.y); ev.kill=e.type;
+  if(s.beam && s.beam.boss===e){ s.beam=null; s.captureT=0; ev.beamOff=true; }   // its beam dies with it
   if(s.challenge){
     s.score += 100;                     // arcade: every challenging-stage enemy is a flat 100
     s.chGroupKills[e.grp]++; s.chDestroyed++;
@@ -715,7 +721,7 @@ if(!HEADLESS){
   function drawCaptive(x,y){ drawShip(x,y,C.red,'#a02020',0.9); }
   function drawEnemy(e){ if(e.st==='dead'||e.st==='wait') return;
     if(e.type==='TICK') drawTick(e); else if(e.type==='DOME') drawDome(e); else drawBoss(e); }
-  function drawBeam(){ if(!s.beam) return; const e=s.beam.boss, bx=Math.round(e.x), by=Math.round(e.y+6);
+  function drawBeam(){ if(!s.beam || !s.beam.boss || s.beam.boss.st==='dead') return; const e=s.beam.boss, bx=Math.round(e.x), by=Math.round(e.y+6);
     const half=26, railW=half, topW=4, pulse=0.35+0.25*Math.sin(s.tMs*0.02);
     ctx.save(); ctx.globalAlpha=pulse; ctx.fillStyle=C.beam;
     ctx.beginPath(); ctx.moveTo(bx-topW,by); ctx.lineTo(bx+topW,by); ctx.lineTo(bx+railW,RAIL_Y); ctx.lineTo(bx-railW,RAIL_Y); ctx.closePath(); ctx.fill();
