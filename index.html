@@ -116,11 +116,159 @@ body:not(.mode-paid) .facts{display:none!important}
 @media (min-height:720px){.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,40px)!important}}
 .foot{font-size:11px!important;padding:2px 0!important}
 </style>
+<style id="fb-brand">
+/* ===== FINNBOTS BRAND LAYER v1 (2026-09-24) ==========================
+   Append-only override, injected as <style id="fb-brand"> AFTER every other
+   style block so it wins without editing a single line of a game's own CSS.
+   Three jobs:
+     1. BRAND  — the FinnBots lockup (bot mark + FINN/BOTS wordmark) in the topbar.
+     2. CABINET — the canvas reads as an arcade screen: bezel, amber rim light, glow.
+     3. THEME  — dark-mode parity with the hub (games.finnstergram.com adapts, the
+                 games did not, so hub -> game was a light/dark slap in the face).
+   Source of truth: factory/templates/brand-layer.css. Never hand-edit a game copy;
+   change it here and re-run apply-brand.sh. ==================================== */
+:root{
+  --fb-amber:#f2a03d; --fb-plum:#5f4c57; --fb-plum-deep:#3e323a;
+  --fb-screen:#241b28; --fb-bezel:#3e323a; --fb-rim:rgba(242,160,61,.45);
+  --fb-ink:#3e323a; --fb-surface:rgba(255,255,255,.55);
+}
+
+/* ---- 1. BRAND LOCKUP --------------------------------------------------- */
+.fb-mark{
+  display:inline-flex; align-items:center; gap:6px; flex:none;
+  text-decoration:none; color:var(--fb-plum); line-height:1;
+  padding:2px 4px; border-radius:999px; -webkit-tap-highlight-color:transparent;
+}
+.fb-mark:hover{ color:var(--fb-plum-deep); }
+.fb-mark:focus-visible{ outline:3px solid var(--electric,#3a6ff7); outline-offset:2px; }
+.fb-bot{ width:22px; height:22px; flex:none; display:block; }
+.fb-word{
+  font-family:var(--disp,'Jersey 15',system-ui,sans-serif);
+  font-size:16px; letter-spacing:.5px; color:currentColor; white-space:nowrap;
+}
+.fb-word i{ font-style:normal; color:var(--fb-amber); }
+/* Phones: the topbar also carries the mode pills + icon buttons, so drop the
+   wordmark and keep the bot mark rather than letting the row overflow. */
+@media (max-width:430px){ .fb-word{ display:none; } }
+body.is-portrait .fb-bot{ width:20px; height:20px; }
+
+/* ---- 2. CABINET ------------------------------------------------------- */
+/* Rings are box-shadow spread only: they paint OUTSIDE the box and never take
+   layout, so fitCanvas' letterbox maths is untouched. */
+canvas#game, canvas{
+  border-radius:12px;
+  box-shadow:
+    0 0 0 2px var(--fb-rim),
+    0 0 0 9px var(--fb-bezel),
+    0 0 0 10px rgba(0,0,0,.28),
+    0 16px 34px -8px rgba(62,50,58,.42),
+    0 0 58px -12px rgba(242,160,61,.40);
+}
+/* The surround needs room for the 10px of rings, or they clip at the viewport edge. */
+.surface{ padding:12px 12px !important; }
+body.is-portrait .surface{ padding:10px !important; }
+
+/* ---- 3. BRANDED BACKDROP (light) -------------------------------------- */
+/* Was a flat peach gradient on every game. Now: an amber glow pool behind the
+   cabinet over a faint plum blueprint grid — the FinnBots workshop floor. */
+body{
+  background:
+    radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.22), rgba(242,160,61,0) 72%),
+    repeating-linear-gradient(0deg,  rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    radial-gradient(120% 80% at 50% 0%, var(--soft,#fdf3e7), var(--peach,#f5c8a0));
+  background-attachment:fixed;
+}
+
+/* ---- 3b. LAYOUT PARITY --------------------------------------------------
+   Two chrome generations had drifted apart. The 7 newest games carry the mode
+   toggle as a compact pill pair in the topbar and hide the free-mode facts line
+   (the How-To overlay already carries that message) — the chassis' own
+   "game-first layout" rule. 8 older games still paint a full-width amber bar
+   plus a facts row, which looks like a different product and eats two rows of
+   play area. Pure CSS, no DOM change: `.wrap > .modebar` matches ONLY the
+   separate-row generation, because in the newer games the modebar sits inside
+   <header class="topbar"> and is therefore not a direct child of .wrap. */
+.wrap > .modebar{ align-self:center; width:auto; max-width:100%; }
+.wrap > .modebar .modepill{ flex:0 0 auto; font-size:12.5px; padding:4px 14px; }
+body:not(.mode-paid) .facts{ display:none; }
+
+/* ---- 4. DARK THEME — parity with the hub ------------------------------ */
+@media (prefers-color-scheme: dark){
+  :root{
+    --fb-ink:#f4eef2; --fb-surface:rgba(255,255,255,.075);
+    --soft:#2f2730; --peach:#221b20; --ink:#f4eef2;
+    --plum-deep:#f4eef2; --muted:#b9aab3;
+  }
+  body{
+    color:#f4eef2;
+    background:
+      radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.13), rgba(242,160,61,0) 72%),
+      repeating-linear-gradient(0deg,  rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
+      radial-gradient(120% 90% at 50% 0%, #2b2330, #1b151a);
+    background-attachment:fixed;
+  }
+  .fb-mark{ color:#f4eef2; }
+  .fb-mark:hover{ color:#fff; }
+  .title{ color:#f4eef2; }
+  .pill{ background:rgba(255,255,255,.12); color:#f4eef2; }
+  .iconbtn{ background:rgba(255,255,255,.12); color:#f4eef2; box-shadow:none; }
+  .modebar{ background:rgba(255,255,255,.075); box-shadow:none; }
+  .modepill{ color:#b9aab3; }
+  .modepill.active{ background:var(--fb-amber); color:#3a2a12; }
+  .hud{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  .hud .lab{ color:#b9aab3; }
+  .facts, .walletbar{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  .facts{ color:#e6dce2; }
+  .walletrow .lbl{ color:#e6dce2; }
+  .wallet-status{ color:#b9aab3; }
+  .wallet-status.ok{ color:#f4eef2; }
+  .ctl{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  .ctl:active,.ctl.on{ background:var(--fb-amber); color:#3a2a12; }
+  .ctl.fire{ background:#6d5765; color:#fff; }
+  .ctl.fire:active,.ctl.fire.on{ background:var(--fb-amber); color:#3a2a12; }
+  .card, .panel{ background:#2f2730; color:#f4eef2; }
+  .card h2, .panel h2, .card .big{ color:#f4eef2; }
+  .card p, .panel p, .rules li{ color:#e6dce2; }
+  .safe{ color:#b9aab3; }
+  .lnks a{ color:var(--fb-amber); }
+  .btn{ background:rgba(255,255,255,.14); color:#f4eef2; }
+  .btn:hover{ background:rgba(255,255,255,.22); }
+  .panel .ghostbtn{ color:#f4eef2; border-color:rgba(255,255,255,.22); }
+  /* --- older-generation chrome the chassis classes don't cover -------------
+     Found by probing every game's computed styles in dark mode, not by eye:
+     4 games paint a white .controls pill, DRUM PUSH white .actbtn, BOTBURNER a
+     white stick pad, and Mr Bot (pre-chassis) its own .status/.footer/d-pad. */
+  .controls{ background:rgba(255,255,255,.06); box-shadow:none; }
+  .actbtn{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  .actbtn.next{ background:#6d5765; color:#fff; }
+  /* the DISABLED next button is the white one — its own rule out-specifies .actbtn */
+  .actbtn.next:disabled{ background:rgba(255,255,255,.06); color:#8c7f88; }
+  .stickpad{ background:rgba(255,255,255,.10); }
+  .ctl.thrbtn{ background:rgba(255,255,255,.13); color:#f4eef2; }
+  .app .status{ background:rgba(255,255,255,.075); color:#c8bcc4; }
+  .app .footer{ background:transparent; }
+  .app .footer .tag{ color:var(--fb-amber); }
+  .app .footer a{ color:#b9aab3; }
+  .app .pad button, .app .up, .app .left, .app .down, .app .right{
+    background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+
+  canvas#game, canvas{
+    box-shadow:
+      0 0 0 2px rgba(242,160,61,.5),
+      0 0 0 9px #161119,
+      0 0 0 10px rgba(0,0,0,.5),
+      0 16px 34px -8px rgba(0,0,0,.6),
+      0 0 64px -10px rgba(242,160,61,.32);
+  }
+}
+</style>
 </head>
 <body>
   <div class="wrap">
     <header class="topbar">
-      <span class="pill">BOT GAMES</span>
+      <!--fb:pill--><a class="fb-mark" href="https://games.finnstergram.com" aria-label="FinnBots — more games"><svg class="fb-bot" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M14 5.4V3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="2" r="1.85" fill="var(--fb-amber)"/><rect x="1" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="24.4" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="3.6" y="5" width="20.8" height="18" rx="5.5" fill="currentColor"/><rect x="6.6" y="8.6" width="14.8" height="9.4" rx="2.6" fill="var(--fb-screen)"/><circle cx="10.7" cy="13.3" r="1.9" fill="var(--fb-amber)"/><circle cx="17.3" cy="13.3" r="1.9" fill="var(--fb-amber)"/></svg><span class="fb-word">FINN<i>BOTS</i></span></a><!--/fb-->
       <h1 class="title">WING 106</h1>
       <button class="iconbtn" id="restartBtn" aria-label="Restart" title="Restart (R)">⟲</button>
       <button class="iconbtn" id="infoBtn" aria-label="How to play">ⓘ</button>
