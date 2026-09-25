@@ -514,11 +514,11 @@ canvas{ touch-action:none; }
 "use strict";
 /* ==========================================================================
    WING 106 — FinnBots.  ENGINE (Free gameplay).
-   FinnBots-original take on the Galaga (1981) arcade loop:
+   FinnBots-original take on the the formation-shooter original (1981) arcade loop:
    convoy-in → 40-slot formation with sway → peel-off dives → BOSS tractor beam
    → capture (park a red 106) → rescue on an attack dive → DUAL WING → every
    4th bay from #3 is a CHALLENGING BAY (no fire, perfect clear = 10,000).
-   No Galaga/Namco/Zako/Goei text. Hero = Bot 106 (drawn in pixels).
+   No the formation-shooter original//Zako/Goei text. Hero = Bot 106 (drawn in pixels).
    Contract kept for the frozen chassis:
      - export { newRun, stepGame } (headless) — no-input run reaches phase 'dead'.
      - window.WING106Engine = { start, idle, resumeFree, state }.
@@ -558,7 +558,7 @@ function newRun(){
     shots:[], ebullets:[], enemies:[], parts:[], rescues:[],
     beam:null, captureT:0, msg:null, msgT:0,
     spd:1, diveTimer:1800, clearBeat:0,
-    nextExtra:20000, extraStep:70000,   // arcade Galaga default: 1st bonus 20,000, then every 70,000
+    nextExtra:20000, extraStep:70000,   // arcade the formation-shooter original default: 1st bonus 20,000, then every 70,000
     stars: makeStars(),
     inDX:0, inFire:false, _fireCd:0,
     challenge:false, chGroupKills:[0,0,0,0,0], chDestroyed:0, chBonusPer:1000 };
@@ -749,7 +749,7 @@ function maybeEnemyFire(s,e,dt){
 function updateBeam(s,dt,ev){
   if(!s.beam) return;
   const b=s.beam, e=b.boss, P=s.player;
-  // Arcade Galaga: shooting the Boss while its tractor beam is out CANCELS the beam.
+  // Arcade the formation-shooter original: shooting the Boss while its tractor beam is out CANCELS the beam.
   // Without this the beam outlived its owner, kept pulling, and doCapture then
   // resurrected the destroyed Boss into 'reslot' — a corpse grabbing your ship.
   if(!e || e.st==='dead'){ s.beam=null; s.captureT=0; return; }
