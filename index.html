@@ -264,6 +264,148 @@ body:not(.mode-paid) .facts{ display:none; }
   }
 }
 </style>
+<style id="fb-device">
+/* ==========================================================================
+   FinnBots DEVICE LAYER — ONE scaling contract for laptop, tablet and phone.
+   Founder rule, 2026-09-25: "all games ... need to be playable on Laptops,
+   tablets and phones."
+
+   SOURCE OF TRUTH. Never hand-edit a game's copy — edit this file and re-run
+   apply-device.js across the roster (same discipline as brand-layer.css).
+
+   It is injected as the LAST <style> in <head>, AFTER the brand layer, so it
+   wins by source order and touches no existing CSS line. Everything below
+   section 3 assumes chassis markup; apply-device.js --safe stops before it for
+   the non-chassis games whose class names mean something else.
+
+   THE MODEL, in one line: the page is exactly one visible viewport tall, the
+   chrome is whatever is left after the play surface has taken what it needs,
+   and the controls are always reachable by the thumb that owns them.
+   ========================================================================== */
+
+/* ---- 1. the page fills the VISIBLE viewport ------------------------------
+   100vh on a phone is the viewport WITHOUT the browser's collapsing chrome:
+   a vh-sized column is taller than the screen, so the controls sit under the
+   address bar and the canvas is cut off. dvh tracks the real thing, and the
+   safe-area insets keep the notch and the home indicator off the buttons. */
+:root{
+  --fb-safe-t: env(safe-area-inset-top, 0px);
+  --fb-safe-b: env(safe-area-inset-bottom, 0px);
+  --fb-safe-l: env(safe-area-inset-left, 0px);
+  --fb-safe-r: env(safe-area-inset-right, 0px);
+  --fb-tap: 48px;                     /* 44 is the accessibility floor; 48 is comfortable */
+}
+html{ height:100%; }
+body{ min-height:100svh; overscroll-behavior:none; -webkit-text-size-adjust:100%; }
+@supports (height:100dvh){ body{ min-height:100dvh; } }
+
+/* ---- 2. touch behaviour -------------------------------------------------
+   Without these a double-tap on a control zooms the page, a long press pops a
+   selection bubble mid-game, and a drag on the canvas pulls the page to
+   refresh. All three are "the game is broken" to a player on a phone. */
+.ctl,.btn,.again,.ghostbtn,.modepill,.iconbtn,button{
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+canvas{ touch-action:none; }
+
+/* ---- 3. hit targets on anything with a finger --------------------------- */
+@media (pointer:coarse){
+  .ctl{ min-width:var(--fb-tap); min-height:var(--fb-tap); }
+  .btn,.again,.ghostbtn{ min-height:var(--fb-tap); }
+  .modepill{ min-height:34px; }
+}
+
+/* ======================= chassis-only from here ========================== */
+
+/* ---- 4. the shell is one screen tall, insets respected ------------------- */
+.wrap{ min-height:100svh; padding-left:max(var(--fb-safe-l), 8px); padding-right:max(var(--fb-safe-r), 8px); }
+@supports (height:100dvh){ .wrap{ min-height:100dvh; } }
+.topbar{ padding-top:var(--fb-safe-t); }
+.controls{ padding-bottom:max(var(--fb-safe-b), 2px); }
+
+
+/* NOTE on the [class] attribute selectors below: a game's own rule for
+   `.controls.twothumb` is specificity (0,2,0) and beats a bare `.controls`
+   however late this file lands. `.controls[class]` is also (0,2,0), so source
+   order decides and the shared layer wins — which is the whole point of having
+   one. Prefer this to !important, which the roster has been bitten by before
+   (an old per-game override winning over a new shared rule, Mr Bot 2026-09-24). */
+
+/* ---- 5. PHONE, PORTRAIT — trim chrome, the canvas takes the rest --------- */
+@media (max-width:560px) and (orientation:portrait){
+  .foot{ display:none; }
+  .wrap{ padding-top:4px; gap:4px; }
+  .surface{ padding:0; }
+  .hud{ font-size:11px; padding:2px 8px; min-height:22px; }
+  .controls[class]{ gap:10px; }
+  .controls[class] .ctl{ min-width:54px; min-height:54px; }   /* thumbs, not cursors */
+  .controls[class] .ctl.fire{ width:64px; height:64px; }
+}
+
+/* ---- 6. PHONE, LANDSCAPE — the case that was actually unplayable ---------
+   A phone on its side has ~350px of height. The old column (topbar + facts +
+   hud + canvas + controls + footer) left the canvas a letterbox slit. Here the
+   chrome collapses to one thin line, the controls become a short rail, and the
+   play surface gets everything else. The HUD is kept but flattened — hiding it
+   would take the score away from the games that do not draw their own. */
+@media (orientation:landscape) and (max-height:560px){
+  .wrap{ padding:2px max(var(--fb-safe-r),6px) 2px max(var(--fb-safe-l),6px); gap:2px; }
+  .foot{ display:none; }
+  body:not(.mode-paid) .facts{ display:none; }
+  .topbar{ min-height:0; gap:6px; }
+  .title{ font-size:13px; }
+  .hud{ font-size:10px; padding:1px 6px; min-height:0; }
+  .surface{ padding:0; }
+  /* The controls move OUT OF FLOW into the side gutters. A portrait-ish canvas
+     on a landscape phone is height-bound, so the width either side of it is dead
+     space — and that dead space is exactly where the thumbs already are. Taking
+     the control row out of the column gives the canvas the full height instead:
+     Measured on a 812x375 phone: 306x245 -> 394x345, +81% of play area.
+     Movement stays under the left thumb, action under the right. */
+  .controls[class]{
+    position:fixed; inset:0; z-index:30; margin:0; max-width:none;
+    padding:0 max(var(--fb-safe-r),10px) calc(10px + var(--fb-safe-b)) max(var(--fb-safe-l),10px);
+    display:flex; align-items:flex-end; justify-content:space-between;
+    background:none; pointer-events:none;
+  }
+  .controls[class] > *{ pointer-events:auto; }
+  .controls[class] .ctl{ min-width:46px; min-height:46px; font-size:13px; }
+  .controls[class] .ctl.fire{ width:54px; height:54px; font-size:10px; }
+  .controls[class] .dpad .ctl{ min-width:42px; min-height:42px; }
+}
+
+/* ---- 7. TABLET — a bigger hand wants bigger keys ------------------------ */
+@media (min-width:700px) and (pointer:coarse){
+  .controls[class] .ctl{ min-width:62px; min-height:62px; }
+  .controls[class] .ctl.fire{ width:78px; height:78px; }
+  .controls[class]{ gap:16px; }
+}
+
+/* ---- 8. STICKINESS FURNITURE -------------------------------------------
+   Rendered by the fb-sticky script: a personal-best chip in the topbar and a
+   "what happened this run" line on the run-over card. No wallet, no network,
+   no engine change — it reads the score the game already prints. */
+.fb-best{
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+  font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:#f2a03d; background:rgba(242,160,61,.14);
+  border:1px solid rgba(242,160,61,.38); padding:4px 9px; border-radius:999px;
+}
+.fb-best i{ font-style:normal; opacity:.72; letter-spacing:.06em; }
+.fb-best b{ color:#fdf3e7; font-weight:800; }
+.fb-best.is-new{ color:#5fd6b4; background:rgba(95,214,180,.16); border-color:rgba(95,214,180,.45); }
+.fb-runline{ margin:8px 0 0; font:700 13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.fb-runline .go{ color:#5fd6b4; }
+.fb-runline .gap{ color:#f2a03d; }
+.fb-runline small{ display:block; font-weight:600; opacity:.7; font-size:11px; margin-top:3px; }
+/* On a phone the topbar is already lockup + title + mode pills + two icon
+   buttons; adding the chip pushed the game's own name out of its own bar. The
+   best score still appears where it actually drives a replay — the run-over
+   card — so the chip is a tablet-and-up affordance. */
+@media (max-width:620px){ .fb-best{ display:none; } }
+@media (orientation:landscape) and (max-height:560px){ .fb-best{ display:none; } }
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -1253,6 +1395,119 @@ if(!HEADLESS){
     if(params.get('phantom_action') || params.get('src')==='browse'){ setMode('paid'); Paid.init(); window.WING106Engine.idle(); Paid.showPaidStart(); Paid.resume(); }
     else { setMode('free'); }
   })();
+})();
+</script>
+<script id="fb-sticky">
+/* ==========================================================================
+   FinnBots STICKINESS LAYER — the reason a player takes one more run.
+   Founder rule, 2026-09-25: "provide a UI/UX that will support stickiness
+   with players."
+
+   SOURCE OF TRUTH. Injected by apply-device.js as <script id="fb-sticky">
+   just before </body>. It is deliberately tiny and entirely passive:
+
+     - it NEVER touches the engine, the wallet layer, the network or a wallet
+     - it reads the score the game ALREADY prints into #oScore
+     - it stores one number per game in localStorage, and nothing else
+
+   What it adds, and why each one earns its place:
+     1. A personal best you can always see.  A score with nothing to beat is a
+        number; a score next to your best is a challenge.
+     2. A run-over line that says exactly how close you came ("1,240 short" /
+        "NEW BEST +900").  The gap is what makes the next run feel winnable.
+     3. A session run counter, so a streak is visible while it is happening.
+     4. Enter / Space / Return restarts from the run-over card.  The single
+        biggest drop-off in an arcade loop is the pause between runs — the
+        fastest possible replay is the strongest retention feature there is.
+   ========================================================================== */
+(function(){
+  try{
+    var NS = 'fb:' + (location.hostname.split('.')[0] || 'game') + ':';
+    var $  = function(id){ return document.getElementById(id); };
+    var read = function(k,d){ try{ var v=localStorage.getItem(NS+k); return v==null?d:(JSON.parse(v)); }catch(e){ return d; } };
+    var save = function(k,v){ try{ localStorage.setItem(NS+k, JSON.stringify(v)); }catch(e){} };
+    var fmt  = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    var num  = function(t){ var n=parseInt(String(t||'').replace(/[^0-9]/g,''),10); return isFinite(n)?n:0; };
+
+    var best = num(read('best', 0)), runs = 0;
+
+    /* ---- 1. the chip, in the topbar beside the title ---- */
+    var chip = document.createElement('span');
+    chip.className = 'fb-best';
+    function paintChip(isNew){
+      chip.innerHTML = '<i>BEST</i> <b>' + fmt(best) + '</b>';
+      chip.classList.toggle('is-new', !!isNew);
+      chip.hidden = !best;
+    }
+    paintChip(false);
+    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
+    if(title && title.parentNode) title.parentNode.insertBefore(chip, title.nextSibling);
+
+    /* ---- 2. the run-over line ---- */
+    var over = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
+    if(!over || !card || !scoreEl) return;       // not a chassis run-over card: do nothing
+    var line = document.createElement('p');
+    line.className = 'fb-runline';
+    var retry = $('retryBtn');
+    if(retry && retry.parentNode) retry.parentNode.insertBefore(line, retry);
+    else card.appendChild(line);
+
+    var shown = false;
+    function onShow(){
+      var score = num(scoreEl.textContent);
+      runs++;
+      var isNew = score > best, gap = best - score;
+      if(isNew){
+        var by = score - best;
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">NEW BEST · +' + fmt(by) + '</span>' +
+                         '<small>run ' + runs + ' this session</small>';
+      } else if(best > 0){
+        line.innerHTML = '<span class="gap">' + fmt(gap) + ' short of your best</span>' +
+                         '<small>best ' + fmt(best) + ' · run ' + runs + ' this session</small>';
+      } else {
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">First run banked</span>' +
+                         '<small>beat ' + fmt(best) + ' next time</small>';
+      }
+      paintChip(isNew);
+    }
+
+    new MutationObserver(function(){
+      var on = over.classList.contains('show');
+      if(on && !shown){ shown = true; onShow(); }
+      else if(!on){ shown = false; }
+    }).observe(over, { attributes:true, attributeFilter:['class'] });
+
+    /* ---- 3. one-key replay, and the focus trap it exposed ------------------
+       Closing a dialog returns focus to the button that opened it — correct
+       accessibility, and the chassis does it. But a focused <button> then eats
+       ENTER and SPACE, so mid-game those keys re-open HOW TO PLAY instead of
+       playing: Space IS the fire key in several games, and this layer had just
+       taught players to press Enter between runs, which made a latent bug easy
+       to hit (Founder, 2026-09-25, seen on a round clear).
+
+       So: Enter/Space replay when the run-over card is up; they are left alone
+       while ANY other dialog is open, because its buttons must still work; and
+       otherwise the focused control is blurred and the key swallowed, so game
+       keys can never operate the chrome. Capture phase, because this has to run
+       before the button's own activation. */
+    var anyDialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
+    addEventListener('keydown', function(e){
+      if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      if(over.classList.contains('show')){
+        e.preventDefault();
+        if(retry) retry.click();
+        return;
+      }
+      if(anyDialog()) return;                       // another dialog owns the keyboard
+      var a = document.activeElement;
+      if(a && a !== document.body && /^(BUTTON|A|SUMMARY)$/.test(a.tagName)){
+        a.blur();
+        e.preventDefault();
+      }
+    }, true);
+  }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
 </body>
