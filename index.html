@@ -895,7 +895,12 @@ if(HEADLESS){ module.exports = { CFG, RUN, newRun, stepGame }; }
 if(!HEADLESS){
 (function(){
   const cv=document.getElementById('game'), ctx=cv.getContext('2d');
-  cv.width=RUN.w; cv.height=RUN.h; ctx.imageSmoothingEnabled=false;
+  /* SUPERSAMPLED BACKING STORE (2026-09-25): backed at SS x the game's own size and the
+     context scaled by SS, so every existing draw call still works in game units while
+     fillText gets SS times the pixels. SS is an integer, so the pixel art still lands on
+     whole device pixels. fitCanvas only touches cv.style, so the CSS size is unchanged. */
+  const SS=3;
+  cv.width=(RUN.w)*SS; cv.height=(RUN.h)*SS;  ctx.setTransform(SS,0,0,SS,0,0); ctx.imageSmoothingEnabled=false; ctx.imageSmoothingEnabled=false;
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Hero art — Bot 106 (Arweave #106, background keyed out). Falls back to the pixel ship if it can't load.
   const heroImg=new Image(); let heroReady=false, heroRed=null;
