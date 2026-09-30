@@ -1515,5 +1515,180 @@ if(!HEADLESS){
   }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
+<script id="fb-seed">
+/* ============================================================================
+ * FinnBots SEED LAYER — the DAILY CHALLENGE (R2).
+ *
+ * One seed, shared by everybody, for one UTC day. Today's run is the same run
+ * for every player on earth, so the day's board ranks PLAY and not luck — and a
+ * free player can practise the exact challenge the paid entries are competing
+ * on, as much as they like, for nothing. That is the whole point: the paid
+ * layer's fairness is paid for by content the free players get free.
+ *
+ * WHY A TOGGLE, AND WHY PRACTICE IS NOT HIDDEN
+ * Pinning the seed makes every run today identical. Framed and labelled that is
+ * a daily challenge; unlabelled it is just a game that stopped surprising you,
+ * and the people it would read that way to are children playing for free. So
+ * the layer always renders its own control: what today is, and a one-tap switch
+ * to a random practice seed. Nothing here ever mentions a price.
+ *
+ * UTC, to match the scanner. A challenge that rolls over at each player's local
+ * midnight is a challenge where "who won today" depends on where you stand.
+ *
+ * HOW IT REACHES THE ENGINE
+ * Math.random is replaced by a seeded PRNG. That is safe here and was checked,
+ * not assumed: no wallet code touches Math.random (0 hits across
+ * solana-web3.iife.min.js, phantom-mobile.js, phantom-deeplink-libs.min.js and
+ * the chassis DOM half) — key material comes from crypto.getRandomValues.
+ *
+ * The seed is re-applied at the START of each run, via the chassis contract
+ * `window.<GameId>Engine = { start, idle, resumeFree, state }` — a documented
+ * interface, not a guessed global. Without that, run 2 would carry on run 1's
+ * PRNG stream and two players would diverge after their first death.
+ * ==========================================================================*/
+(function(){
+  if (window.FB_SEED) return;
+  var NATIVE = Math.random;
+
+  function hash32(str){
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+  function dayKey(){ return new Date().toISOString().slice(0, 10); }   /* UTC */
+
+  var state = 0, used = 0;
+  function next(){
+    used++;
+    state = (state + 0x6D2B79F5) | 0;
+    var t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+
+  var FB = {
+    native: NATIVE,
+    dayKey: dayKey,
+    todaySeed: function(){ return hash32('FinnBots|' + dayKey()); },
+    value: 0,
+    daily: true,
+    set: function(n){ FB.value = n >>> 0; state = FB.value | 0; return FB.value; },
+    /* how many random numbers this game has actually consumed. Games whose
+     * levels are AUTHORED (hand-built rounds, bays, screens) never call
+     * Math.random at all: for them the day's run is already identical for
+     * everyone, the seed changes nothing, and a "Practise" button would be a
+     * control that does nothing — the same defect as a d-pad direction the
+     * engine never reads. So the control adapts to what the game actually
+     * uses, discovered at runtime rather than from a list of game names. */
+    usesRandom: function(){ return used > 0; },
+    reseed: function(){
+      return FB.daily ? FB.set(FB.todaySeed())
+                      : FB.set((NATIVE() * 4294967296) >>> 0);
+    },
+    practice: function(on){ FB.daily = !on; FB.reseed(); paint(); return FB.value; }
+  };
+  Math.random = next;
+  FB.reseed();
+  window.FB_SEED = FB;
+
+  /* ---- reseed at the start of every run ---------------------------------- */
+  function hook(o){
+    ['start', 'resumeFree'].forEach(function(k){
+      if (typeof o[k] !== 'function' || o[k].__fbSeeded) return;
+      var orig = o[k];
+      var w = function(){ FB.reseed(); return orig.apply(this, arguments); };
+      w.__fbSeeded = true;
+      o[k] = w;
+    });
+  }
+  function scan(){
+    for (var k in window){
+      if (!/Engine$/.test(k)) continue;
+      try { var o = window[k]; if (o && typeof o === 'object') hook(o); } catch (e) {}
+    }
+  }
+
+  /* ---- the control ------------------------------------------------------- */
+  var box = null;
+  function paint(){
+    if (!box) return;
+    var rng = FB.usesRandom();
+    var long  = !rng ? 'Today' : FB.daily ? 'Daily Challenge' : 'Practice run';
+    var short = !rng ? 'TODAY' : FB.daily ? 'DAILY' : 'PRACTICE';
+    box.innerHTML =
+      '<span class="fb-seed-lbl"><span class="l">' + long + '</span>' +
+        '<span class="s">' + short + '</span></span>' +
+      '<span class="fb-seed-day">' +
+        (rng && !FB.daily ? 'random' : FB.dayKey()) + '</span>' +
+      (rng ? '<button class="fb-seed-btn" type="button">' +
+             (FB.daily ? 'Practise' : 'Today') + '</button>' : '');
+    var btn = box.querySelector('.fb-seed-btn');
+    if (btn) btn.addEventListener('click', function(){
+      FB.practice(FB.daily);
+      try { localStorage.setItem('fb-seed-practice', FB.daily ? '0' : '1'); } catch (e) {}
+    });
+  }
+  /* A game only reveals that it uses randomness once it has drawn some, which
+   * is usually a frame or two into the first run. Repaint on a slow tick until
+   * it does, then stop — cheap, and it needs no per-game knowledge. */
+  var watch = setInterval(function(){
+    if (!box) return;
+    if (FB.usesRandom()){ paint(); clearInterval(watch); }
+  }, 1000);
+  function mount(){
+    if (box || !document.body) return;
+    var css = document.createElement('style');
+    /* IN FLOW, never position:fixed. The first version floated this bottom-left
+     * and on a 375px phone it sat directly on top of the d-pad — measured, not
+     * guessed: the badge occupied y 766-804 and padL/padR occupied 741-799, so
+     * a child pressing LEFT would have hit "Practise". A floating control has
+     * to dodge every game's layout forever; an in-flow chip in the topbar,
+     * which is where the stickiness layer already puts its personal-best chip,
+     * cannot collide with anything by construction. */
+    css.textContent =
+      '.fb-seed{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;vertical-align:middle;' +
+      "font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;" +
+      'color:#7fb0ff;background:rgba(58,111,247,.14);border:1px solid rgba(58,111,247,.38);' +
+      'padding:3px 4px 3px 8px;border-radius:999px;flex:0 0 auto;min-width:0}' +
+      '.fb-seed-lbl{letter-spacing:.06em}' +
+      '.fb-seed-day{opacity:.72;font-weight:600;font-variant-numeric:tabular-nums}' +
+      '.fb-seed-btn{appearance:none;border:0;cursor:pointer;background:rgba(58,111,247,.28);' +
+      'color:#bcd4ff;border-radius:999px;padding:4px 8px;min-height:26px;' +
+      'font:inherit;font-size:10px;letter-spacing:.04em}' +
+      '.fb-seed-btn:focus-visible{outline:2px solid #3a6ff7;outline-offset:2px}' +
+      '.fb-seed .s{display:none}' +
+      /* The game's own NAME outranks this chip. At 375px the long label pushed
+       * "WING 106" out of the topbar and left the title rendering as "W..",
+       * so below 560px the chip drops the date and uses its short label. A
+       * badge that costs a game its title is not worth the information. */
+      '@media (max-width:560px){.fb-seed{font-size:10px;padding:3px 3px 3px 7px;gap:4px}' +
+      '.fb-seed-day{display:none}.fb-seed .l{display:none}.fb-seed .s{display:inline}}';
+    document.head.appendChild(css);
+    box = document.createElement('span');
+    box.className = 'fb-seed';
+    box.setAttribute('role', 'status');
+    /* beside the title, after the personal-best chip if one is already there */
+    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
+    var anchor = title && title.parentNode ? title : null;
+    if (anchor) {
+      var after = anchor.nextSibling;
+      while (after && after.className === 'fb-best') after = after.nextSibling;
+      anchor.parentNode.insertBefore(box, after);
+    } else {
+      /* no topbar (a non-chassis game): append to the main column, still in
+       * flow, so it lands under the controls rather than on top of them */
+      (document.querySelector('.wrap') || document.body).appendChild(box);
+    }
+    try { if (localStorage.getItem('fb-seed-practice') === '1') FB.daily = false; } catch (e) {}
+    FB.reseed();
+    paint();
+  }
+
+  function boot(){ scan(); mount(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  setTimeout(boot, 0);   /* the Engine global may be assigned after this script */
+})();
+</script>
 </body>
 </html>
