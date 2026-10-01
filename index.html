@@ -913,7 +913,18 @@ if(!HEADLESS){
   const HERO_DW=24, HERO_DH=24;
   let s=newRun(), active=true, prevPhase='play';
 
-  function fitCanvas(){ const box=cv.parentElement.getBoundingClientRect();
+  function fitCanvas(){ const box=(function(){ /* CONTENT box, not the border box: getBoundingClientRect
+      includes the host's padding (the shared device layer puts 12px on .surface),
+      so fitting to it asks for ~24px more than exists — then `max-height:100%`
+      clamps one axis, the other keeps the oversized value, and the canvas is
+      STRETCHED. Measured across the roster at 1400x820 it put every game between
+      2.9% and 5.4% off its own aspect ratio, which is every sprite subtly
+      squashed, on every game, all the time. */
+      const host=cv.parentElement; if(!host) return {width:0,height:0};
+      const cs=getComputedStyle(host);
+      const px=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+      const py=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+      return { width:Math.max(0,host.clientWidth-px), height:Math.max(0,host.clientHeight-py) }; })();
     const ar=RUN.w/RUN.h; let w=box.width, h=w/ar; if(h>box.height){ h=box.height; w=h*ar; }
     cv.style.width=Math.max(80,Math.floor(w))+'px'; cv.style.height=Math.max(44,Math.floor(h))+'px'; }
   addEventListener('resize',fitCanvas); fitCanvas(); setTimeout(fitCanvas,120);
