@@ -318,11 +318,22 @@ canvas{ touch-action:none; }
 
 /* ======================= chassis-only from here ========================== */
 
+/* ---- LEGACY CLASS ALIASES ------------------------------------------------
+   This layer is INSTALLED on 22 games and, until now, partially INERT on five
+   of them, because it only ever named the current chassis's classes:
+     Mr Bot    has `.app` and `.actions`, no `.wrap` and no `.controls`
+     Bot Merge, FlappyBot   have `.actions`, no `.controls`
+     Bot Pong  has no `.wrap`
+   Every `.wrap` / `.controls` / `.foot` rule below simply did not match them —
+   the layer was present, byte-identical to this template, and doing nothing.
+   That is the same shape as the stickiness layer being installed and dead on
+   five games (2026-10-01), and it is why the aliases are carried here rather
+   than renaming markup in a live paid game. */
 /* ---- 4. the shell is one screen tall, insets respected ------------------- */
-.wrap{ min-height:100svh; padding-left:max(var(--fb-safe-l), 8px); padding-right:max(var(--fb-safe-r), 8px); }
-@supports (height:100dvh){ .wrap{ min-height:100dvh; } }
+.wrap, .app{ min-height:100svh; padding-left:max(var(--fb-safe-l), 8px); padding-right:max(var(--fb-safe-r), 8px); }
+@supports (height:100dvh){ .wrap, .app{ min-height:100dvh; } }
 .topbar{ padding-top:var(--fb-safe-t); }
-.controls{ padding-bottom:max(var(--fb-safe-b), 2px); }
+.controls, .actions{ padding-bottom:max(var(--fb-safe-b), 2px); }
 
 
 /* NOTE on the [class] attribute selectors below: a game's own rule for
@@ -334,13 +345,13 @@ canvas{ touch-action:none; }
 
 /* ---- 5. PHONE, PORTRAIT — trim chrome, the canvas takes the rest --------- */
 @media (max-width:560px) and (orientation:portrait){
-  .foot{ display:none; }
-  .wrap{ padding-top:4px; gap:4px; }
+  .foot, .footer{ display:none; }
+  .wrap, .app{ padding-top:4px; gap:4px; }
   .surface{ padding:0; }
   .hud{ font-size:11px; padding:2px 8px; min-height:22px; }
-  .controls[class]{ gap:10px; }
-  .controls[class] .ctl{ min-width:54px; min-height:54px; }   /* thumbs, not cursors */
-  .controls[class] .ctl.fire{ width:64px; height:64px; }
+  .controls[class], .actions[class]{ gap:10px; }
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:54px; min-height:54px; }   /* thumbs, not cursors */
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:64px; height:64px; }
 }
 
 /* ---- 6. PHONE, LANDSCAPE — the case that was actually unplayable ---------
@@ -350,8 +361,8 @@ canvas{ touch-action:none; }
    play surface gets everything else. The HUD is kept but flattened — hiding it
    would take the score away from the games that do not draw their own. */
 @media (orientation:landscape) and (max-height:560px){
-  .wrap{ padding:2px max(var(--fb-safe-r),6px) 2px max(var(--fb-safe-l),6px); gap:2px; }
-  .foot{ display:none; }
+  .wrap, .app{ padding:2px max(var(--fb-safe-r),6px) 2px max(var(--fb-safe-l),6px); gap:2px; }
+  .foot, .footer{ display:none; }
   body:not(.mode-paid) .facts{ display:none; }
   .topbar{ min-height:0; gap:6px; }
   .title{ font-size:13px; }
@@ -363,23 +374,23 @@ canvas{ touch-action:none; }
      the control row out of the column gives the canvas the full height instead:
      Measured on a 812x375 phone: 306x245 -> 394x345, +81% of play area.
      Movement stays under the left thumb, action under the right. */
-  .controls[class]{
+  .controls[class], .actions[class]{
     position:fixed; inset:0; z-index:30; margin:0; max-width:none;
     padding:0 max(var(--fb-safe-r),10px) calc(10px + var(--fb-safe-b)) max(var(--fb-safe-l),10px);
     display:flex; align-items:flex-end; justify-content:space-between;
     background:none; pointer-events:none;
   }
-  .controls[class] > *{ pointer-events:auto; }
-  .controls[class] .ctl{ min-width:46px; min-height:46px; font-size:13px; }
-  .controls[class] .ctl.fire{ width:54px; height:54px; font-size:10px; }
-  .controls[class] .dpad .ctl{ min-width:42px; min-height:42px; }
+  .controls[class], .actions[class] > *{ pointer-events:auto; }
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:46px; min-height:46px; font-size:13px; }
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:54px; height:54px; font-size:10px; }
+  .controls[class] .dpad .ctl, .actions[class] .dpad .ctl{ min-width:42px; min-height:42px; }
 }
 
 /* ---- 7. TABLET — a bigger hand wants bigger keys ------------------------ */
 @media (min-width:700px) and (pointer:coarse){
-  .controls[class] .ctl{ min-width:62px; min-height:62px; }
-  .controls[class] .ctl.fire{ width:78px; height:78px; }
-  .controls[class]{ gap:16px; }
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:62px; min-height:62px; }
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:78px; height:78px; }
+  .controls[class], .actions[class]{ gap:16px; }
 }
 
 /* ---- 8. LAPTOP / DESKTOP — a cursor is not a thumb -----------------------
@@ -414,8 +425,8 @@ canvas{ touch-action:none; }
    bigger than they need to be on a mouse: the pad's own grid tracks, and the
    padding around the row. Nothing here can make any control larger. */
 @media (pointer:fine) and (min-width:900px) and (min-height:700px){
-  .controls[class]{ gap:8px !important; padding-top:2px !important; padding-bottom:2px !important; }
-  .controls[class] .dpad{ gap:4px !important;
+  .controls[class], .actions[class]{ gap:8px !important; padding-top:2px !important; padding-bottom:2px !important; }
+  .controls[class] .dpad, .actions[class] .dpad{ gap:4px !important;
                           grid-template-columns:repeat(3,40px) !important;
                           grid-template-rows:repeat(3,32px) !important; }
 }
