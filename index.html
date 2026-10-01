@@ -382,7 +382,45 @@ canvas{ touch-action:none; }
   .controls[class]{ gap:16px; }
 }
 
-/* ---- 8. STICKINESS FURNITURE -------------------------------------------
+/* ---- 8. LAPTOP / DESKTOP — a cursor is not a thumb -----------------------
+   Sections 3, 5, 6 and 7 size the on-screen pad for fingers. Nothing ever
+   turned that off for a pointer that IS a cursor, so a laptop kept thumb-sized
+   keys it never needed. Measured at 1440x900 across the served roster: ten
+   games carry a control block over 90px tall — RIVETBOT 152, BOTMAN/BURROBOT/
+   Mrs Bot 142, BotFord/DRUM PUSH/HOP 106 136 — and every one of those canvases
+   is HEIGHT-BOUND, so each pixel of pad comes straight out of the play area.
+   The pad stays (people do click it), it just stops being a thumb rest.
+   Measured gain: +4.6% to +8.5% canvas height on eight games, and because the
+   canvas is ratio-locked that is +9% to +18% of PLAY AREA.
+   Scoped to `pointer:fine` so phones and tablets, which report `coarse`, are
+   untouched; and to a window with room to spare, so a small laptop window is
+   not made worse. `.controls[class]` is (0,2,0) for the same reason the rest of
+   this file uses it — an old per-game override must not win over a shared rule
+   (Mr Bot, 2026-09-24).
+
+   !important is used here and nowhere else in this file, deliberately. Two
+   games proved specificity alone is not enough: BOTMAN carries a per-game
+   `.dpad{...!important}` from an older pass, and HOVERBOT has no `.dpad` at all
+   (its pad is `.controls.twohand` with direct children). A shared rule losing
+   to an old per-game override is the exact failure this file already documents,
+   so section 8 asserts itself — it is tightly media-scoped, so it can only ever
+   apply to a mouse-driven window with room to spare.
+
+   ONLY EVER SHRINK. The first version set `.ctl{min-width:40px; min-height:32px;
+   padding:4px 8px}`, which is a floor — and BOTRUN's racer pedals were already
+   SMALLER than that, so the rule meant to reclaim space grew its controls
+   62px -> 74px and cost it 2% of canvas. A rule that reclaims space must be
+   purely subtractive, so this touches only the two things that are always
+   bigger than they need to be on a mouse: the pad's own grid tracks, and the
+   padding around the row. Nothing here can make any control larger. */
+@media (pointer:fine) and (min-width:900px) and (min-height:700px){
+  .controls[class]{ gap:8px !important; padding-top:2px !important; padding-bottom:2px !important; }
+  .controls[class] .dpad{ gap:4px !important;
+                          grid-template-columns:repeat(3,40px) !important;
+                          grid-template-rows:repeat(3,32px) !important; }
+}
+
+/* ---- 9. STICKINESS FURNITURE -------------------------------------------
    Rendered by the fb-sticky script: a personal-best chip in the topbar and a
    "what happened this run" line on the run-over card. No wallet, no network,
    no engine change — it reads the score the game already prints. */
@@ -1413,119 +1451,6 @@ if(!HEADLESS){
   })();
 })();
 </script>
-<script id="fb-sticky">
-/* ==========================================================================
-   FinnBots STICKINESS LAYER — the reason a player takes one more run.
-   Founder rule, 2026-09-25: "provide a UI/UX that will support stickiness
-   with players."
-
-   SOURCE OF TRUTH. Injected by apply-device.js as <script id="fb-sticky">
-   just before </body>. It is deliberately tiny and entirely passive:
-
-     - it NEVER touches the engine, the wallet layer, the network or a wallet
-     - it reads the score the game ALREADY prints into #oScore
-     - it stores one number per game in localStorage, and nothing else
-
-   What it adds, and why each one earns its place:
-     1. A personal best you can always see.  A score with nothing to beat is a
-        number; a score next to your best is a challenge.
-     2. A run-over line that says exactly how close you came ("1,240 short" /
-        "NEW BEST +900").  The gap is what makes the next run feel winnable.
-     3. A session run counter, so a streak is visible while it is happening.
-     4. Enter / Space / Return restarts from the run-over card.  The single
-        biggest drop-off in an arcade loop is the pause between runs — the
-        fastest possible replay is the strongest retention feature there is.
-   ========================================================================== */
-(function(){
-  try{
-    var NS = 'fb:' + (location.hostname.split('.')[0] || 'game') + ':';
-    var $  = function(id){ return document.getElementById(id); };
-    var read = function(k,d){ try{ var v=localStorage.getItem(NS+k); return v==null?d:(JSON.parse(v)); }catch(e){ return d; } };
-    var save = function(k,v){ try{ localStorage.setItem(NS+k, JSON.stringify(v)); }catch(e){} };
-    var fmt  = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
-    var num  = function(t){ var n=parseInt(String(t||'').replace(/[^0-9]/g,''),10); return isFinite(n)?n:0; };
-
-    var best = num(read('best', 0)), runs = 0;
-
-    /* ---- 1. the chip, in the topbar beside the title ---- */
-    var chip = document.createElement('span');
-    chip.className = 'fb-best';
-    function paintChip(isNew){
-      chip.innerHTML = '<i>BEST</i> <b>' + fmt(best) + '</b>';
-      chip.classList.toggle('is-new', !!isNew);
-      chip.hidden = !best;
-    }
-    paintChip(false);
-    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
-    if(title && title.parentNode) title.parentNode.insertBefore(chip, title.nextSibling);
-
-    /* ---- 2. the run-over line ---- */
-    var over = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
-    if(!over || !card || !scoreEl) return;       // not a chassis run-over card: do nothing
-    var line = document.createElement('p');
-    line.className = 'fb-runline';
-    var retry = $('retryBtn');
-    if(retry && retry.parentNode) retry.parentNode.insertBefore(line, retry);
-    else card.appendChild(line);
-
-    var shown = false;
-    function onShow(){
-      var score = num(scoreEl.textContent);
-      runs++;
-      var isNew = score > best, gap = best - score;
-      if(isNew){
-        var by = score - best;
-        best = score; save('best', best);
-        line.innerHTML = '<span class="go">NEW BEST · +' + fmt(by) + '</span>' +
-                         '<small>run ' + runs + ' this session</small>';
-      } else if(best > 0){
-        line.innerHTML = '<span class="gap">' + fmt(gap) + ' short of your best</span>' +
-                         '<small>best ' + fmt(best) + ' · run ' + runs + ' this session</small>';
-      } else {
-        best = score; save('best', best);
-        line.innerHTML = '<span class="go">First run banked</span>' +
-                         '<small>beat ' + fmt(best) + ' next time</small>';
-      }
-      paintChip(isNew);
-    }
-
-    new MutationObserver(function(){
-      var on = over.classList.contains('show');
-      if(on && !shown){ shown = true; onShow(); }
-      else if(!on){ shown = false; }
-    }).observe(over, { attributes:true, attributeFilter:['class'] });
-
-    /* ---- 3. one-key replay, and the focus trap it exposed ------------------
-       Closing a dialog returns focus to the button that opened it — correct
-       accessibility, and the chassis does it. But a focused <button> then eats
-       ENTER and SPACE, so mid-game those keys re-open HOW TO PLAY instead of
-       playing: Space IS the fire key in several games, and this layer had just
-       taught players to press Enter between runs, which made a latent bug easy
-       to hit (Founder, 2026-09-25, seen on a round clear).
-
-       So: Enter/Space replay when the run-over card is up; they are left alone
-       while ANY other dialog is open, because its buttons must still work; and
-       otherwise the focused control is blurred and the key swallowed, so game
-       keys can never operate the chrome. Capture phase, because this has to run
-       before the button's own activation. */
-    var anyDialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
-    addEventListener('keydown', function(e){
-      if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-      if(over.classList.contains('show')){
-        e.preventDefault();
-        if(retry) retry.click();
-        return;
-      }
-      if(anyDialog()) return;                       // another dialog owns the keyboard
-      var a = document.activeElement;
-      if(a && a !== document.body && /^(BUTTON|A|SUMMARY)$/.test(a.tagName)){
-        a.blur();
-        e.preventDefault();
-      }
-    }, true);
-  }catch(e){ /* stickiness must never break a game */ }
-})();
-</script>
 <script id="fb-seed">
 /* ============================================================================
  * FinnBots SEED LAYER — the DAILY CHALLENGE (R2).
@@ -1699,6 +1624,119 @@ if(!HEADLESS){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
   setTimeout(boot, 0);   /* the Engine global may be assigned after this script */
+})();
+</script>
+<script id="fb-sticky">
+/* ==========================================================================
+   FinnBots STICKINESS LAYER — the reason a player takes one more run.
+   Founder rule, 2026-09-25: "provide a UI/UX that will support stickiness
+   with players."
+
+   SOURCE OF TRUTH. Injected by apply-device.js as <script id="fb-sticky">
+   just before </body>. It is deliberately tiny and entirely passive:
+
+     - it NEVER touches the engine, the wallet layer, the network or a wallet
+     - it reads the score the game ALREADY prints into #oScore
+     - it stores one number per game in localStorage, and nothing else
+
+   What it adds, and why each one earns its place:
+     1. A personal best you can always see.  A score with nothing to beat is a
+        number; a score next to your best is a challenge.
+     2. A run-over line that says exactly how close you came ("1,240 short" /
+        "NEW BEST +900").  The gap is what makes the next run feel winnable.
+     3. A session run counter, so a streak is visible while it is happening.
+     4. Enter / Space / Return restarts from the run-over card.  The single
+        biggest drop-off in an arcade loop is the pause between runs — the
+        fastest possible replay is the strongest retention feature there is.
+   ========================================================================== */
+(function(){
+  try{
+    var NS = 'fb:' + (location.hostname.split('.')[0] || 'game') + ':';
+    var $  = function(id){ return document.getElementById(id); };
+    var read = function(k,d){ try{ var v=localStorage.getItem(NS+k); return v==null?d:(JSON.parse(v)); }catch(e){ return d; } };
+    var save = function(k,v){ try{ localStorage.setItem(NS+k, JSON.stringify(v)); }catch(e){} };
+    var fmt  = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    var num  = function(t){ var n=parseInt(String(t||'').replace(/[^0-9]/g,''),10); return isFinite(n)?n:0; };
+
+    var best = num(read('best', 0)), runs = 0;
+
+    /* ---- 1. the chip, in the topbar beside the title ---- */
+    var chip = document.createElement('span');
+    chip.className = 'fb-best';
+    function paintChip(isNew){
+      chip.innerHTML = '<i>BEST</i> <b>' + fmt(best) + '</b>';
+      chip.classList.toggle('is-new', !!isNew);
+      chip.hidden = !best;
+    }
+    paintChip(false);
+    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
+    if(title && title.parentNode) title.parentNode.insertBefore(chip, title.nextSibling);
+
+    /* ---- 2. the run-over line ---- */
+    var over = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
+    if(!over || !card || !scoreEl) return;       // not a chassis run-over card: do nothing
+    var line = document.createElement('p');
+    line.className = 'fb-runline';
+    var retry = $('retryBtn');
+    if(retry && retry.parentNode) retry.parentNode.insertBefore(line, retry);
+    else card.appendChild(line);
+
+    var shown = false;
+    function onShow(){
+      var score = num(scoreEl.textContent);
+      runs++;
+      var isNew = score > best, gap = best - score;
+      if(isNew){
+        var by = score - best;
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">NEW BEST · +' + fmt(by) + '</span>' +
+                         '<small>run ' + runs + ' this session</small>';
+      } else if(best > 0){
+        line.innerHTML = '<span class="gap">' + fmt(gap) + ' short of your best</span>' +
+                         '<small>best ' + fmt(best) + ' · run ' + runs + ' this session</small>';
+      } else {
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">First run banked</span>' +
+                         '<small>beat ' + fmt(best) + ' next time</small>';
+      }
+      paintChip(isNew);
+    }
+
+    new MutationObserver(function(){
+      var on = over.classList.contains('show');
+      if(on && !shown){ shown = true; onShow(); }
+      else if(!on){ shown = false; }
+    }).observe(over, { attributes:true, attributeFilter:['class'] });
+
+    /* ---- 3. one-key replay, and the focus trap it exposed ------------------
+       Closing a dialog returns focus to the button that opened it — correct
+       accessibility, and the chassis does it. But a focused <button> then eats
+       ENTER and SPACE, so mid-game those keys re-open HOW TO PLAY instead of
+       playing: Space IS the fire key in several games, and this layer had just
+       taught players to press Enter between runs, which made a latent bug easy
+       to hit (Founder, 2026-09-25, seen on a round clear).
+
+       So: Enter/Space replay when the run-over card is up; they are left alone
+       while ANY other dialog is open, because its buttons must still work; and
+       otherwise the focused control is blurred and the key swallowed, so game
+       keys can never operate the chrome. Capture phase, because this has to run
+       before the button's own activation. */
+    var anyDialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
+    addEventListener('keydown', function(e){
+      if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      if(over.classList.contains('show')){
+        e.preventDefault();
+        if(retry) retry.click();
+        return;
+      }
+      if(anyDialog()) return;                       // another dialog owns the keyboard
+      var a = document.activeElement;
+      if(a && a !== document.body && /^(BUTTON|A|SUMMARY)$/.test(a.tagName)){
+        a.blur();
+        e.preventDefault();
+      }
+    }, true);
+  }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
 </body>
