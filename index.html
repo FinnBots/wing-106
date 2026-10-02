@@ -516,6 +516,11 @@ canvas{ touch-action:none; }
 .fb-outro-hero{ display:block; margin:6px auto 8px; width:76px; height:76px;
   object-fit:contain; image-rendering:auto;
   filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+/* `display:block` on a class BEATS the UA's `[hidden]` rule, so the hero the
+   layer hides on a decode error was still laid out — and a game that ships no
+   hero PNG (Bot Merge) drew a broken-image box in the middle of its ending.
+   Caught by playing the one game on the roster without the asset. */
+.fb-outro-hero[hidden]{ display:none; }
 .fb-outro-win .fb-outro-hero{
   animation:fb-outro-pop .5s cubic-bezier(.2,1.5,.4,1) both;
   filter:drop-shadow(0 0 14px rgba(242,160,61,.75)) drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
@@ -573,6 +578,7 @@ canvas{ touch-action:none; }
    on the old two-line card and looks broken under a full ending screen, so
    give it its own row — scoped to .fb-outro-on, so a game without this layer
    keeps exactly the layout it shipped with. */
+.fb-outro-on .fb-runline small{ display:block; }
 .fb-outro-on .card .btnrow{ flex-wrap:wrap; justify-content:center; }
 .fb-outro-on .card .btnrow > .fb-runline{ flex:1 0 100%; margin:0 0 4px; text-align:center; }
 
@@ -2245,12 +2251,24 @@ if(!HEADLESS){
         while(node && node.parentNode && node.parentNode !== card) node = node.parentNode;
         return (node && node.parentNode === card) ? node : null;
       };
-      var anchor = up(card.querySelector('.fb-runline')) ||
-                   up(card.querySelector('.btnrow')) ||
-                   up(document.getElementById('retryBtn')) ||
-                   up(card.querySelector('button'));
-      if(anchor) card.insertBefore(box, anchor);
-      else card.appendChild(box);
+      /* Directly UNDER THE TITLE, so the card always reads verdict → tally →
+         rank → personal best → replay. Anchoring on the buttons instead put
+         the whole ending screen BELOW anything else the card happened to
+         carry: on Bot Merge the initials box and the device high-score list
+         sat between the title and the tally and broke the ending in half. The
+         chassis's own `.big` and stat line are hidden by this layer, so
+         landing above them changes nothing on the other games. */
+      var title = up(document.getElementById('overTitle')) || up(card.querySelector('h1,h2'));
+      if(title && title.nextSibling) card.insertBefore(box, title.nextSibling);
+      else if(title) card.appendChild(box);
+      else {
+        var anchor = up(card.querySelector('.fb-runline')) ||
+                     up(card.querySelector('.btnrow')) ||
+                     up(document.getElementById('retryBtn')) ||
+                     up(card.querySelector('button'));
+        if(anchor) card.insertBefore(box, anchor);
+        else card.appendChild(box);
+      }
     })();
 
     var hero = q('.fb-outro-hero');
