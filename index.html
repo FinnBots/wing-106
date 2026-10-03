@@ -2264,7 +2264,7 @@ if(!HEADLESS){
        the buttons and the card read title, best, REPLAY BUTTON, tally, score.
        It took a screenshot to see it, because order is the one property a
        DOM-only gate had not been asked for — verify-outro now asserts it. */
-    (function place(){
+    function place(){
       var up = function(node){
         while(node && node.parentNode && node.parentNode !== card) node = node.parentNode;
         return (node && node.parentNode === card) ? node : null;
@@ -2287,7 +2287,8 @@ if(!HEADLESS){
         if(anchor) card.insertBefore(box, anchor);
         else card.appendChild(box);
       }
-    })();
+    }
+    place();
 
     var hero = q('.fb-outro-hero');
     /* The hero is the real Bot 106 PNG every game already ships (Founder,
@@ -2396,8 +2397,24 @@ if(!HEADLESS){
 
     /* ---- run it ----------------------------------------------------------- */
     function show(){
+      /* THE CARD MAY HAVE BEEN REBUILT. BOTRUN composes its run-over card at
+         run end with `overCard.innerHTML = '<h2 id="overTitle">TIME UP</h2>…'`
+         and THEN reveals it, which destroys this layer's block and leaves the
+         nodes we cached pointing at detached elements. The Founder's screenshot
+         was the result: a bare "TIME UP" and a retry button, with no score at
+         all — because our tally was gone AND our CSS was still hiding the
+         card's own `.big` readout. Worse than before the layer existed.
+         So: re-resolve what we read, and re-attach before we render. */
+      scoreEl = $('oScore')    || scoreEl;
+      titleEl = $('overTitle') || titleEl;
+      if(box.parentNode !== card) place();
+
       var score = num(scoreEl.textContent), win = won();
-      document.body.classList.add('fb-outro-on');
+      /* and only now may the card's own score be hidden — this class is
+         exactly "make broken look different from working", so the layer must
+         never suppress what the game already shows unless its replacement is
+         really on screen. */
+      if(box.parentNode === card) document.body.classList.add('fb-outro-on');
       box.classList.remove('fb-outro-win','fb-outro-end');
       box.classList.add(win ? 'fb-outro-win' : 'fb-outro-end');
       q('.fb-outro-kicker').textContent = win ? 'Shift complete · Bot 106 made it out'
@@ -2453,6 +2470,13 @@ if(!HEADLESS){
       var mo = new MutationObserver(evaluate);
       mo.observe(overlay, { attributes:true, attributeFilter:['class','style','hidden'] });
       mo.observe(card,    { attributes:true, attributeFilter:['class','style','hidden'] });
+      /* A game that rebuilds the card AFTER revealing it would tear the ending
+         screen out from under a player who is looking at it. Watch the card's
+         own children and put it back. Re-inserting fires this observer again,
+         and the guard below makes that pass a no-op, so it cannot loop. */
+      new MutationObserver(function(){
+        if(on && box.parentNode !== card){ place(); show(); }
+      }).observe(card, { childList:true });
     }catch(e){}
     /* The chassis writes the score and THEN adds .show, so the observer is
        enough; this one call covers a game that was already showing the card
