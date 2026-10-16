@@ -1,0 +1,2564 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>WING 106 — a FinnBots game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --plum:#5f4c57; --plum-deep:#3e323a; --amber:#f2a03d; --electric:#3a6ff7;
+    --peach:#f5c8a0; --soft:#fdf3e7; --ink:#3e323a; --muted:#8a7a82; --red:#c0392b;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s6:24px;
+    --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:22px;
+    --sh1:0 1px 2px rgba(62,50,58,.12); --sh2:0 4px 14px rgba(62,50,58,.16);
+    --disp:'Jersey 15',system-ui,sans-serif; --body:'Plus Jakarta Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100dvh;overflow:hidden;margin:0}
+  body{ font-family:var(--body); color:var(--ink);
+    background:radial-gradient(120% 80% at 50% 0%, var(--soft), var(--peach));
+    -webkit-font-smoothing:antialiased; user-select:none; -webkit-user-select:none; touch-action:none; }
+  .wrap{height:100%;max-width:1400px;margin:0 auto;display:flex;flex-direction:column;padding:var(--s3);gap:var(--s2)}
+  .topbar{display:flex;align-items:center;gap:var(--s3);min-height:34px}
+  .pill{font-family:var(--disp);font-size:15px;letter-spacing:.5px;color:#fff;background:var(--plum);padding:2px var(--s3);border-radius:999px;box-shadow:var(--sh1);white-space:nowrap}
+  .title{font-family:var(--disp);font-size:26px;line-height:1;color:var(--plum-deep);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .iconbtn{appearance:none;border:0;background:#fff;color:var(--plum);width:32px;height:32px;border-radius:50%;font-family:var(--disp);font-size:18px;box-shadow:var(--sh1);cursor:pointer}
+  .iconbtn:focus-visible{outline:3px solid var(--electric);outline-offset:2px}
+  .modebar{display:flex;gap:var(--s1);background:rgba(255,255,255,.5);border-radius:999px;padding:3px;box-shadow:var(--sh1)}
+  .modepill{flex:1;appearance:none;border:0;cursor:pointer;font-family:var(--disp);font-size:14px;padding:5px 10px;border-radius:999px;background:transparent;color:var(--muted)}
+  .modepill.active{background:var(--amber);color:var(--plum-deep)}
+  .modepill:disabled{opacity:.5;cursor:default}
+  .modepill:focus-visible{outline:2px solid var(--electric);outline-offset:2px}
+  .testBanner{background:var(--amber);color:#4a2c10;font-weight:700;text-align:center;font-size:12px;padding:5px 10px;border-radius:var(--r-md)}
+  .testBanner.hidden{display:none}
+  .walletbar{display:none;flex-direction:column;gap:5px;background:rgba(255,255,255,.55);border-radius:var(--r-md);padding:7px var(--s3);box-shadow:var(--sh1)}
+  body.mode-paid .walletbar{display:flex}
+  .walletrow{display:flex;align-items:center;gap:8px}
+  .walletrow .lbl{font-size:12px;color:var(--plum-deep);flex:1;line-height:1.3}
+  .connect-btn{appearance:none;border:0;cursor:pointer;font-family:var(--disp);font-size:14px;background:var(--plum);color:#fff;padding:6px 16px;border-radius:999px;box-shadow:var(--sh1)}
+  .connect-btn:disabled{opacity:.6;cursor:default}
+  .wallet-status{font-size:12px;color:var(--muted);line-height:1.35}
+  .wallet-status.hidden{display:none}
+  .wallet-status.ok{color:var(--plum-deep)} .wallet-status.warn{color:var(--red)}
+  .wallet-status .addr{font-family:ui-monospace,monospace;color:var(--plum)}
+  .facts{font-size:12.5px;color:var(--plum-deep);background:rgba(255,255,255,.55);border-radius:var(--r-md);padding:6px var(--s3);text-align:center;min-height:30px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--sh1)}
+  .facts b{font-weight:700}
+  .dot-sep{opacity:.4}
+  .hud{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s2) var(--s3);font-family:var(--disp);color:var(--plum-deep);background:rgba(255,255,255,.55);border-radius:var(--r-md);padding:6px var(--s4);min-height:34px;box-shadow:var(--sh1)}
+  .hud .lab{font-size:11px;color:var(--muted);letter-spacing:1px}
+  .hud .val{font-size:18px;line-height:1}
+  .hud .val.warn{color:var(--red)}
+  .lives{display:inline-flex;gap:4px;align-items:center}
+  .life{width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:var(--sh1)}
+  .life.off{background:rgba(0,0,0,.14);box-shadow:none}
+  .surface{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+  /* Canvas fit — width-driven + letterbox. Tune aspect-ratio to your game (e.g. 9/16 portrait, 3/2 landscape). */
+  canvas{ width:100%;height:auto;max-width:100%;max-height:100%;aspect-ratio:7/9;background:#05060f;border-radius:var(--r-lg);box-shadow:var(--sh2);image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none; }
+  .controls{display:flex;gap:var(--s6);align-items:center;justify-content:center;background:rgba(255,255,255,.55);border-radius:var(--r-md);padding:6px var(--s4);box-shadow:var(--sh1)}
+  .dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,40px);gap:4px}
+  .ctl{appearance:none;border:0;cursor:pointer;font-family:var(--disp);font-size:20px;color:var(--plum-deep);background:#fff;border-radius:var(--r-sm);box-shadow:var(--sh1);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
+  .ctl:active,.ctl.on{transform:translateY(1px);background:var(--amber)}
+  .ctl:focus-visible{outline:3px solid var(--electric);outline-offset:2px}
+  .ctl.fire{font-size:13px;color:#fff;background:var(--plum)}
+  .ctl.fire:active,.ctl.fire.on{background:var(--plum-deep)}
+  /* WING two-thumb rail controls: L/R under the left thumb, FIRE under the right (classic shooter; no up/down) */
+  .controls.twothumb{width:100%;justify-content:space-between;background:transparent;box-shadow:none;gap:var(--s4);padding:6px 28px!important}
+  .controls.twothumb .cluster.move{display:flex;gap:14px}
+  .controls.twothumb .ctl.big{width:68px;height:58px;font-size:24px;border-radius:14px}
+  .controls.twothumb .ctl.fire{width:88px;height:88px;border-radius:50%;font-size:18px}
+  #padU{grid-area:1/2/2/3} #padL{grid-area:2/1/3/2} #padFire{grid-area:2/2/3/3} #padR{grid-area:2/3/3/4} #padD{grid-area:3/2/4/3}
+  .foot{text-align:center;min-height:28px}
+  .foot .tag{font-family:var(--disp);font-size:13px;color:var(--muted);letter-spacing:.5px}
+  .foot .links{font-size:12px;margin-top:1px}
+  .foot a{color:var(--muted);text-decoration:none;margin:0 6px}
+  .foot a:hover{color:var(--plum)}
+  .foot a:focus-visible{outline:2px solid var(--electric);outline-offset:2px;border-radius:3px}
+  .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(42,34,48,.55);backdrop-filter:blur(2px);padding:var(--s4);z-index:20}
+  .overlay.show{display:flex}
+  body.mode-paid .modebar,body.mode-paid .walletbar{position:relative;z-index:21}
+  .card{background:var(--soft);border-radius:var(--r-xl);box-shadow:var(--sh2);max-width:380px;width:100%;padding:var(--s6);text-align:center}
+  .card h2{font-family:var(--disp);font-size:30px;margin:0 0 var(--s2);color:var(--plum-deep)}
+  .card.win h2{color:var(--amber)}
+  .card p{font-size:13.5px;line-height:1.5;margin:var(--s2) 0;color:var(--plum-deep)}
+  .card .big{font-family:var(--disp);font-size:22px;color:var(--plum-deep);margin:var(--s3) 0}
+  .card .big span{color:var(--amber)}
+  .btn{appearance:none;border:0;font-family:var(--disp);font-size:18px;color:#fff;background:var(--plum);padding:10px var(--s6);border-radius:999px;cursor:pointer;box-shadow:var(--sh1);margin-top:var(--s3)}
+  .btn:hover{background:var(--plum-deep)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn:focus-visible{outline:3px solid var(--electric);outline-offset:2px}
+  .rules{text-align:left}
+  .rules li{font-size:13px;line-height:1.55;margin:5px 0}
+  .safe{font-size:11.5px;color:var(--muted);margin-top:var(--s3)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+  .sheet{position:fixed;inset:0;background:rgba(42,34,48,.6);display:none;align-items:center;justify-content:center;padding:var(--s4);z-index:30}
+  .sheet.show{display:flex}
+  .panel{width:100%;max-width:340px;background:var(--soft);border-radius:var(--r-xl);padding:var(--s6);box-shadow:var(--sh2);text-align:center}
+  .panel h2{font-family:var(--disp);font-size:24px;margin:0 0 var(--s2);color:var(--plum-deep)}
+  .panel p{font-size:13px;color:var(--plum-deep);margin:0 0 var(--s4);line-height:1.5}
+  .panel .again{appearance:none;border:0;cursor:pointer;font-family:var(--disp);font-size:16px;background:var(--amber);color:#4a2c10;padding:11px var(--s6);border-radius:999px;display:block;width:100%;margin-bottom:var(--s2);box-shadow:var(--sh1)}
+  .panel .ghostbtn{appearance:none;border:1px solid rgba(95,76,87,.25);cursor:pointer;font-family:var(--body);font-weight:600;font-size:14px;background:transparent;color:var(--plum);padding:9px 18px;border-radius:999px;display:block;width:100%;box-sizing:border-box;text-decoration:none;margin-bottom:var(--s2)}
+  .panel .ghostbtn:last-child{margin-bottom:0}
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+<style id="pv-optimise">
+/* Portrait play-area optimisation (2026-09-22): reclaim vertical chrome so the
+   height-bound canvas grows on tablet/desktop (widening .wrap can't help portrait). */
+.wrap{padding-top:4px!important;padding-bottom:4px!important;gap:4px!important}
+body:not(.mode-paid) .facts{display:none!important}
+.topbar{min-height:0!important}
+.title{font-size:18px!important}
+.controls{padding:2px 0!important}
+.controls:has(.dpad){align-self:center!important;width:auto!important;padding:6px 18px!important}
+.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,38px)!important}
+@media (min-height:720px){.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,40px)!important}}
+.foot{font-size:11px!important;padding:2px 0!important}
+</style>
+<style id="fb-brand">
+/* ===== FINNBOTS BRAND LAYER v1 (2026-09-24) ==========================
+   Append-only override, injected as <style id="fb-brand"> AFTER every other
+   style block so it wins without editing a single line of a game's own CSS.
+   Three jobs:
+     1. BRAND  — the FinnBots lockup (bot mark + FINN/BOTS wordmark) in the topbar.
+     2. CABINET — the canvas reads as an arcade screen: bezel, amber rim light, glow.
+     3. THEME  — dark-mode parity with the hub (games.finnstergram.com adapts, the
+                 games did not, so hub -> game was a light/dark slap in the face).
+   Source of truth: factory/templates/brand-layer.css. Never hand-edit a game copy;
+   change it here and re-run apply-brand.sh. ==================================== */
+:root{
+  --fb-amber:#f2a03d; --fb-plum:#5f4c57; --fb-plum-deep:#3e323a;
+  --fb-screen:#241b28; --fb-bezel:#3e323a; --fb-rim:rgba(242,160,61,.45);
+  --fb-ink:#3e323a; --fb-surface:rgba(255,255,255,.55);
+}
+
+/* ---- 1. BRAND LOCKUP --------------------------------------------------- */
+.fb-mark{
+  display:inline-flex; align-items:center; gap:6px; flex:none;
+  text-decoration:none; color:var(--fb-plum); line-height:1;
+  padding:2px 4px; border-radius:999px; -webkit-tap-highlight-color:transparent;
+}
+.fb-mark:hover{ color:var(--fb-plum-deep); }
+.fb-mark:focus-visible{ outline:3px solid var(--electric,#3a6ff7); outline-offset:2px; }
+.fb-bot{ width:22px; height:22px; flex:none; display:block; }
+.fb-word{
+  font-family:var(--disp,'Jersey 15',system-ui,sans-serif);
+  font-size:16px; letter-spacing:.5px; color:currentColor; white-space:nowrap;
+}
+.fb-word i{ font-style:normal; color:var(--fb-amber); }
+/* Phones: the topbar also carries the mode pills + icon buttons, so drop the
+   wordmark and keep the bot mark rather than letting the row overflow. */
+@media (max-width:430px){ .fb-word{ display:none; } }
+body.is-portrait .fb-bot{ width:20px; height:20px; }
+
+/* ---- 2. CABINET ------------------------------------------------------- */
+/* Rings are box-shadow spread only: they paint OUTSIDE the box and never take
+   layout, so fitCanvas' letterbox maths is untouched. */
+canvas#game, canvas{
+  border-radius:12px;
+  box-shadow:
+    0 0 0 2px var(--fb-rim),
+    0 0 0 9px var(--fb-bezel),
+    0 0 0 10px rgba(0,0,0,.28),
+    0 16px 34px -8px rgba(62,50,58,.42),
+    0 0 58px -12px rgba(242,160,61,.40);
+}
+/* The surround needs room for the 10px of rings, or they clip at the viewport edge. */
+.surface{ padding:12px 12px !important; }
+body.is-portrait .surface{ padding:10px !important; }
+
+/* ---- 3. BRANDED BACKDROP (light) -------------------------------------- */
+/* Was a flat peach gradient on every game. Now: an amber glow pool behind the
+   cabinet over a faint plum blueprint grid — the FinnBots workshop floor. */
+body{
+  background:
+    radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.22), rgba(242,160,61,0) 72%),
+    repeating-linear-gradient(0deg,  rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    radial-gradient(120% 80% at 50% 0%, var(--soft,#fdf3e7), var(--peach,#f5c8a0));
+  background-attachment:fixed;
+}
+
+/* ---- 3b. LAYOUT PARITY --------------------------------------------------
+   Two chrome generations had drifted apart. The 7 newest games carry the mode
+   toggle as a compact pill pair in the topbar and hide the free-mode facts line
+   (the How-To overlay already carries that message) — the chassis' own
+   "game-first layout" rule. 8 older games still paint a full-width amber bar
+   plus a facts row, which looks like a different product and eats two rows of
+   play area. Pure CSS, no DOM change: `.wrap > .modebar` matches ONLY the
+   separate-row generation, because in the newer games the modebar sits inside
+   <header class="topbar"> and is therefore not a direct child of .wrap. */
+.wrap > .modebar{ align-self:center; width:auto; max-width:100%; }
+.wrap > .modebar .modepill{ flex:0 0 auto; font-size:12.5px; padding:4px 14px; }
+body:not(.mode-paid) .facts{ display:none; }
+
+/* ---- 4. DARK THEME — parity with the hub ------------------------------ */
+@media (prefers-color-scheme: dark){
+  :root{
+    --fb-ink:#f4eef2; --fb-surface:rgba(255,255,255,.075);
+    --soft:#2f2730; --peach:#221b20; --ink:#f4eef2;
+    --plum-deep:#f4eef2; --muted:#b9aab3;
+  }
+  body{
+    color:#f4eef2;
+    background:
+      radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.13), rgba(242,160,61,0) 72%),
+      repeating-linear-gradient(0deg,  rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
+      radial-gradient(120% 90% at 50% 0%, #2b2330, #1b151a);
+    background-attachment:fixed;
+  }
+  .fb-mark{ color:#f4eef2; }
+  .fb-mark:hover{ color:#fff; }
+  .title{ color:#f4eef2; }
+  .pill{ background:rgba(255,255,255,.12); color:#f4eef2; }
+  .iconbtn{ background:rgba(255,255,255,.12); color:#f4eef2; box-shadow:none; }
+  .modebar{ background:rgba(255,255,255,.075); box-shadow:none; }
+  .modepill{ color:#b9aab3; }
+  .modepill.active{ background:var(--fb-amber); color:#3a2a12; }
+  .hud{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  .hud .lab{ color:#b9aab3; }
+  .facts, .walletbar{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  .facts{ color:#e6dce2; }
+  .walletrow .lbl{ color:#e6dce2; }
+  .wallet-status{ color:#b9aab3; }
+  .wallet-status.ok{ color:#f4eef2; }
+  .ctl{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  .ctl:active,.ctl.on{ background:var(--fb-amber); color:#3a2a12; }
+  .ctl.fire{ background:#6d5765; color:#fff; }
+  .ctl.fire:active,.ctl.fire.on{ background:var(--fb-amber); color:#3a2a12; }
+  .card, .panel{ background:#2f2730; color:#f4eef2; }
+  .card h2, .panel h2, .card .big{ color:#f4eef2; }
+  .card p, .panel p, .rules li{ color:#e6dce2; }
+  .safe{ color:#b9aab3; }
+  .lnks a{ color:var(--fb-amber); }
+  .btn{ background:rgba(255,255,255,.14); color:#f4eef2; }
+  .btn:hover{ background:rgba(255,255,255,.22); }
+  .panel .ghostbtn{ color:#f4eef2; border-color:rgba(255,255,255,.22); }
+  /* --- older-generation chrome the chassis classes don't cover -------------
+     Found by probing every game's computed styles in dark mode, not by eye:
+     4 games paint a white .controls pill, DRUM PUSH white .actbtn, BOTBURNER a
+     white stick pad, and Mr Bot (pre-chassis) its own .status/.footer/d-pad. */
+  .controls{ background:rgba(255,255,255,.06); box-shadow:none; }
+  .actbtn{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  .actbtn.next{ background:#6d5765; color:#fff; }
+  /* the DISABLED next button is the white one — its own rule out-specifies .actbtn */
+  .actbtn.next:disabled{ background:rgba(255,255,255,.06); color:#8c7f88; }
+  .stickpad{ background:rgba(255,255,255,.10); }
+  .ctl.thrbtn{ background:rgba(255,255,255,.13); color:#f4eef2; }
+  .app .status{ background:rgba(255,255,255,.075); color:#c8bcc4; }
+  .app .footer{ background:transparent; }
+  .app .footer .tag{ color:var(--fb-amber); }
+  .app .footer a{ color:#b9aab3; }
+  .app .pad button, .app .up, .app .left, .app .down, .app .right{
+    background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+
+  canvas#game, canvas{
+    box-shadow:
+      0 0 0 2px rgba(242,160,61,.5),
+      0 0 0 9px #161119,
+      0 0 0 10px rgba(0,0,0,.5),
+      0 16px 34px -8px rgba(0,0,0,.6),
+      0 0 64px -10px rgba(242,160,61,.32);
+  }
+}
+</style>
+<style id="fb-device">
+/* ==========================================================================
+   FinnBots DEVICE LAYER — ONE scaling contract for laptop, tablet and phone.
+   Founder rule, 2026-09-25: "all games ... need to be playable on Laptops,
+   tablets and phones."
+
+   SOURCE OF TRUTH. Never hand-edit a game's copy — edit this file and re-run
+   apply-device.js across the roster (same discipline as brand-layer.css).
+
+   It is injected as the LAST <style> in <head>, AFTER the brand layer, so it
+   wins by source order and touches no existing CSS line. Everything below
+   section 3 assumes chassis markup; apply-device.js --safe stops before it for
+   the non-chassis games whose class names mean something else.
+
+   THE MODEL, in one line: the page is exactly one visible viewport tall, the
+   chrome is whatever is left after the play surface has taken what it needs,
+   and the controls are always reachable by the thumb that owns them.
+   ========================================================================== */
+
+/* ---- 1. the page fills the VISIBLE viewport ------------------------------
+   100vh on a phone is the viewport WITHOUT the browser's collapsing chrome:
+   a vh-sized column is taller than the screen, so the controls sit under the
+   address bar and the canvas is cut off. dvh tracks the real thing, and the
+   safe-area insets keep the notch and the home indicator off the buttons. */
+:root{
+  --fb-safe-t: env(safe-area-inset-top, 0px);
+  --fb-safe-b: env(safe-area-inset-bottom, 0px);
+  --fb-safe-l: env(safe-area-inset-left, 0px);
+  --fb-safe-r: env(safe-area-inset-right, 0px);
+  --fb-tap: 48px;                     /* 44 is the accessibility floor; 48 is comfortable */
+}
+html{ height:100%; }
+body{ min-height:100svh; overscroll-behavior:none; -webkit-text-size-adjust:100%; }
+@supports (height:100dvh){ body{ min-height:100dvh; } }
+
+/* ---- 2. touch behaviour -------------------------------------------------
+   Without these a double-tap on a control zooms the page, a long press pops a
+   selection bubble mid-game, and a drag on the canvas pulls the page to
+   refresh. All three are "the game is broken" to a player on a phone. */
+.ctl,.btn,.again,.ghostbtn,.modepill,.iconbtn,button{
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+canvas{ touch-action:none; }
+
+/* ---- 3. hit targets on anything with a finger --------------------------- */
+@media (pointer:coarse){
+  .ctl{ min-width:var(--fb-tap); min-height:var(--fb-tap); }
+  .btn,.again,.ghostbtn{ min-height:var(--fb-tap); }
+  .modepill{ min-height:34px; }
+}
+
+/* ======================= chassis-only from here ========================== */
+
+/* ---- LEGACY CLASS ALIASES ------------------------------------------------
+   This layer is INSTALLED on 22 games and, until now, partially INERT on five
+   of them, because it only ever named the current chassis's classes:
+     Mr Bot    has `.app` and `.actions`, no `.wrap` and no `.controls`
+     Bot Merge, FlappyBot   have `.actions`, no `.controls`
+     Bot Pong  has no `.wrap`
+   Every `.wrap` / `.controls` / `.foot` rule below simply did not match them —
+   the layer was present, byte-identical to this template, and doing nothing.
+   That is the same shape as the stickiness layer being installed and dead on
+   five games (2026-10-01), and it is why the aliases are carried here rather
+   than renaming markup in a live paid game. */
+/* ---- 4. the shell is one screen tall, insets respected ------------------- */
+.wrap, .app{ min-height:100svh; padding-left:max(var(--fb-safe-l), 8px); padding-right:max(var(--fb-safe-r), 8px); }
+@supports (height:100dvh){ .wrap, .app{ min-height:100dvh; } }
+.topbar{ padding-top:var(--fb-safe-t); }
+.controls, .actions{ padding-bottom:max(var(--fb-safe-b), 2px); }
+
+
+/* NOTE on the [class] attribute selectors below: a game's own rule for
+   `.controls.twothumb` is specificity (0,2,0) and beats a bare `.controls`
+   however late this file lands. `.controls[class]` is also (0,2,0), so source
+   order decides and the shared layer wins — which is the whole point of having
+   one. Prefer this to !important, which the roster has been bitten by before
+   (an old per-game override winning over a new shared rule, Mr Bot 2026-09-24). */
+
+/* ---- 5. PHONE, PORTRAIT — trim chrome, the canvas takes the rest --------- */
+@media (max-width:560px) and (orientation:portrait){
+  .foot, .footer{ display:none; }
+  .wrap, .app{ padding-top:4px; gap:4px; }
+  .surface{ padding:0; }
+  .hud{ font-size:11px; padding:2px 8px; min-height:22px; }
+  .controls[class], .actions[class]{ gap:10px; }
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:54px; min-height:54px; }   /* thumbs, not cursors */
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:64px; height:64px; }
+}
+
+/* ---- 6. PHONE, LANDSCAPE — the case that was actually unplayable ---------
+   A phone on its side has ~350px of height. The old column (topbar + facts +
+   hud + canvas + controls + footer) left the canvas a letterbox slit. Here the
+   chrome collapses to one thin line, the controls become a short rail, and the
+   play surface gets everything else. The HUD is kept but flattened — hiding it
+   would take the score away from the games that do not draw their own. */
+@media (orientation:landscape) and (max-height:560px){
+  .wrap, .app{ padding:2px max(var(--fb-safe-r),6px) 2px max(var(--fb-safe-l),6px); gap:2px; }
+  .foot, .footer{ display:none; }
+  body:not(.mode-paid) .facts{ display:none; }
+  .topbar{ min-height:0; gap:6px; }
+  .title{ font-size:13px; }
+  .hud{ font-size:10px; padding:1px 6px; min-height:0; }
+  .surface{ padding:0; }
+  /* The controls move OUT OF FLOW into the side gutters. A portrait-ish canvas
+     on a landscape phone is height-bound, so the width either side of it is dead
+     space — and that dead space is exactly where the thumbs already are. Taking
+     the control row out of the column gives the canvas the full height instead:
+     Measured on a 812x375 phone: 306x245 -> 394x345, +81% of play area.
+     Movement stays under the left thumb, action under the right. */
+  .controls[class], .actions[class]{
+    position:fixed; inset:0; z-index:30; margin:0; max-width:none;
+    padding:0 max(var(--fb-safe-r),10px) calc(10px + var(--fb-safe-b)) max(var(--fb-safe-l),10px);
+    display:flex; align-items:flex-end; justify-content:space-between;
+    background:none; pointer-events:none;
+  }
+  .controls[class], .actions[class] > *{ pointer-events:auto; }
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:46px; min-height:46px; font-size:13px; }
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:54px; height:54px; font-size:10px; }
+  .controls[class] .dpad .ctl, .actions[class] .dpad .ctl{ min-width:42px; min-height:42px; }
+}
+
+/* ---- 7. TABLET — a bigger hand wants bigger keys ------------------------ */
+@media (min-width:700px) and (pointer:coarse){
+  .controls[class] .ctl, .actions[class] .ctl{ min-width:62px; min-height:62px; }
+  .controls[class] .ctl.fire, .actions[class] .ctl.fire{ width:78px; height:78px; }
+  .controls[class], .actions[class]{ gap:16px; }
+}
+
+/* ---- 8. LAPTOP / DESKTOP — a cursor is not a thumb -----------------------
+   Sections 3, 5, 6 and 7 size the on-screen pad for fingers. Nothing ever
+   turned that off for a pointer that IS a cursor, so a laptop kept thumb-sized
+   keys it never needed. Measured at 1440x900 across the served roster: ten
+   games carry a control block over 90px tall — RIVETBOT 152, BOTMAN/BURROBOT/
+   Mrs Bot 142, BotFord/DRUM PUSH/HOP 106 136 — and every one of those canvases
+   is HEIGHT-BOUND, so each pixel of pad comes straight out of the play area.
+   The pad stays (people do click it), it just stops being a thumb rest.
+   Measured gain: +4.6% to +8.5% canvas height on eight games, and because the
+   canvas is ratio-locked that is +9% to +18% of PLAY AREA.
+   Scoped to `pointer:fine` so phones and tablets, which report `coarse`, are
+   untouched; and to a window with room to spare, so a small laptop window is
+   not made worse. `.controls[class]` is (0,2,0) for the same reason the rest of
+   this file uses it — an old per-game override must not win over a shared rule
+   (Mr Bot, 2026-09-24).
+
+   !important is used here and nowhere else in this file, deliberately. Two
+   games proved specificity alone is not enough: BOTMAN carries a per-game
+   `.dpad{...!important}` from an older pass, and HOVERBOT has no `.dpad` at all
+   (its pad is `.controls.twohand` with direct children). A shared rule losing
+   to an old per-game override is the exact failure this file already documents,
+   so section 8 asserts itself — it is tightly media-scoped, so it can only ever
+   apply to a mouse-driven window with room to spare.
+
+   ONLY EVER SHRINK. The first version set `.ctl{min-width:40px; min-height:32px;
+   padding:4px 8px}`, which is a floor — and BOTRUN's racer pedals were already
+   SMALLER than that, so the rule meant to reclaim space grew its controls
+   62px -> 74px and cost it 2% of canvas. A rule that reclaims space must be
+   purely subtractive, so this touches only the two things that are always
+   bigger than they need to be on a mouse: the pad's own grid tracks, and the
+   padding around the row. Nothing here can make any control larger. */
+@media (pointer:fine) and (min-width:900px) and (min-height:700px){
+  .controls[class], .actions[class]{ gap:8px !important; padding-top:2px !important; padding-bottom:2px !important; }
+  .controls[class] .dpad, .actions[class] .dpad{ gap:4px !important;
+                          grid-template-columns:repeat(3,40px) !important;
+                          grid-template-rows:repeat(3,32px) !important; }
+}
+
+/* ---- 9. STICKINESS FURNITURE -------------------------------------------
+   Rendered by the fb-sticky script: a personal-best chip in the topbar and a
+   "what happened this run" line on the run-over card. No wallet, no network,
+   no engine change — it reads the score the game already prints. */
+.fb-best{
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+  font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:#f2a03d; background:rgba(242,160,61,.14);
+  border:1px solid rgba(242,160,61,.38); padding:4px 9px; border-radius:999px;
+}
+.fb-best i{ font-style:normal; opacity:.72; letter-spacing:.06em; }
+.fb-best b{ color:#fdf3e7; font-weight:800; }
+.fb-best.is-new{ color:#5fd6b4; background:rgba(95,214,180,.16); border-color:rgba(95,214,180,.45); }
+.fb-runline{ margin:8px 0 0; font:700 13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.fb-runline .go{ color:#5fd6b4; }
+.fb-runline .gap{ color:#f2a03d; }
+.fb-runline small{ display:block; font-weight:600; opacity:.7; font-size:11px; margin-top:3px; }
+/* On a phone the topbar is already lockup + title + mode pills + two icon
+   buttons; adding the chip pushed the game's own name out of its own bar. The
+   best score still appears where it actually drives a replay — the run-over
+   card — so the chip is a tablet-and-up affordance. */
+@media (max-width:620px){ .fb-best{ display:none; } }
+@media (orientation:landscape) and (max-height:560px){ .fb-best{ display:none; } }
+</style>
+<script id="fb-seed">
+/* ============================================================================
+ * FinnBots SEED LAYER — the DAILY CHALLENGE (R2).
+ *
+ * One seed, shared by everybody, for one UTC day. Today's run is the same run
+ * for every player on earth, so the day's board ranks PLAY and not luck — and a
+ * free player can practise the exact challenge the paid entries are competing
+ * on, as much as they like, for nothing. That is the whole point: the paid
+ * layer's fairness is paid for by content the free players get free.
+ *
+ * WHY A TOGGLE, AND WHY PRACTICE IS NOT HIDDEN
+ * Pinning the seed makes every run today identical. Framed and labelled that is
+ * a daily challenge; unlabelled it is just a game that stopped surprising you,
+ * and the people it would read that way to are children playing for free. So
+ * the layer always renders its own control: what today is, and a one-tap switch
+ * to a random practice seed. Nothing here ever mentions a price.
+ *
+ * UTC, to match the scanner. A challenge that rolls over at each player's local
+ * midnight is a challenge where "who won today" depends on where you stand.
+ *
+ * HOW IT REACHES THE ENGINE
+ * Math.random is replaced by a seeded PRNG. That is safe here and was checked,
+ * not assumed: no wallet code touches Math.random (0 hits across
+ * solana-web3.iife.min.js, phantom-mobile.js, phantom-deeplink-libs.min.js and
+ * the chassis DOM half) — key material comes from crypto.getRandomValues.
+ *
+ * The seed is re-applied at the START of each run, via the chassis contract
+ * `window.<GameId>Engine = { start, idle, resumeFree, state }` — a documented
+ * interface, not a guessed global. Without that, run 2 would carry on run 1's
+ * PRNG stream and two players would diverge after their first death.
+ *
+ * THAT HOOK IS NOT ENOUGH ON ITS OWN (2026-10-10). Two runs never pass through
+ * it: the run the engine builds AT LOAD, and every free retry — the chassis's
+ * `restart()` (the ⟲ button, R, the run-over card's retry) calls newRun()
+ * directly inside the engine's closure, where no layer can reach. So the FREE
+ * player — the one this layer exists for — never got today's challenge: not on
+ * load, not on retry. Paid runs were fine (they go through Engine.start).
+ * The contract is therefore two-sided:
+ *   - this script is injected in <head> (apply-seed.js), so FB_SEED exists
+ *     before the engine's `let s=freshRun()` runs at load;
+ *   - the chassis builds EVERY browser run through
+ *       function freshRun(){ try{ if(window.FB_SEED) window.FB_SEED.reseed(); }catch(e){} return newRun(); }
+ *     never a bare newRun(). verify-reseed.js drives each served build's real
+ *     load / restart / retry paths and fails one that is not today's run.
+ * ==========================================================================*/
+(function(){
+  if (window.FB_SEED) return;
+  var NATIVE = Math.random;
+  /* PAID RUNS ON A SEED FREE PLAY NEVER SEES (opt-in, 2026-10-10). In a game whose
+   * skill is DISCOVERING something hidden (a word, a grid's answer), free practice
+   * of today's run REVEALS the paid run's answers. A game opts in with the
+   * attribute data-fb-paid=entry on this layer's own script tag (apply-seed.js
+   * --paid-seed=entry writes it): each paid start (Engine.start, the
+   * call the wallet layer makes after the entry is confirmed) is dealt a fresh seed
+   * from crypto.getRandomValues — a different run every entry, from the same
+   * difficulty bands, that no amount of free practice can preview. Free play,
+   * retries and practice are unchanged. Games without the attribute: unchanged. */
+  var PAID_MODE = '';
+  try { var me = document.currentScript; PAID_MODE = (me && me.getAttribute && me.getAttribute('data-fb-paid')) || ''; } catch (e) {}
+  function freshSeed(){
+    try { var a = new Uint32Array(1); (window.crypto || self.crypto).getRandomValues(a); return a[0] >>> 0; }
+    catch (e) { return (NATIVE() * 4294967296) >>> 0; }
+  }
+
+  function hash32(str){
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+  function dayKey(){ return new Date().toISOString().slice(0, 10); }   /* UTC */
+
+  var state = 0, used = 0;
+  function next(){
+    used++;
+    state = (state + 0x6D2B79F5) | 0;
+    var t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+
+  var FB = {
+    native: NATIVE,
+    dayKey: dayKey,
+    todaySeed: function(){ return hash32('FinnBots|' + dayKey()); },
+    value: 0,
+    daily: true,
+    set: function(n){ FB.value = n >>> 0; state = FB.value | 0; return FB.value; },
+    /* how many random numbers this game has actually consumed. Games whose
+     * levels are AUTHORED (hand-built rounds, bays, screens) never call
+     * Math.random at all: for them the day's run is already identical for
+     * everyone, the seed changes nothing, and a "Practise" button would be a
+     * control that does nothing — the same defect as a d-pad direction the
+     * engine never reads. So the control adapts to what the game actually
+     * uses, discovered at runtime rather than from a list of game names. */
+    usesRandom: function(){ return used > 0; },
+    paidMode: PAID_MODE,
+    inPaid: false,
+    pinned: null,
+    /* While a paid start is building its run the seed is PINNED: the chassis's own
+     * freshRun() calls reseed() inside Engine.start, and without the pin that call
+     * would put the daily seed straight back. */
+    reseed: function(){
+      if (FB.pinned !== null) return FB.set(FB.pinned);
+      FB.inPaid = false;
+      return FB.daily ? FB.set(FB.todaySeed())
+                      : FB.set((NATIVE() * 4294967296) >>> 0);
+    },
+    practice: function(on){ FB.daily = !on; FB.reseed(); paint(); return FB.value; }
+  };
+  /* The practice choice is read NOW, not when the chip mounts. Mounting used to
+   * call reseed() — harmless while this script ran last, but from <head> the
+   * engine has already built its load-time run and started drawing from the
+   * stream by then, and a reseed there rewinds that run's stream mid-play. */
+  try { if (localStorage.getItem('fb-seed-practice') === '1') FB.daily = false; } catch (e) {}
+  Math.random = next;
+  FB.reseed();
+  window.FB_SEED = FB;
+
+  /* ---- reseed at the start of every run ---------------------------------- */
+  function hook(o){
+    ['start', 'resumeFree'].forEach(function(k){
+      if (typeof o[k] !== 'function' || o[k].__fbSeeded) return;
+      var orig = o[k];
+      var w = (k === 'start' && FB.paidMode === 'entry')
+        ? function(){
+            FB.pinned = freshSeed(); FB.reseed(); FB.inPaid = true;
+            try { return orig.apply(this, arguments); }
+            finally { FB.pinned = null; try { paint(); } catch (e) {} }
+          }
+        : function(){ FB.reseed(); return orig.apply(this, arguments); };
+      w.__fbSeeded = true;
+      o[k] = w;
+    });
+  }
+  function scan(){
+    for (var k in window){
+      if (!/Engine$/.test(k)) continue;
+      try { var o = window[k]; if (o && typeof o === 'object') hook(o); } catch (e) {}
+    }
+  }
+
+  /* ---- the control ------------------------------------------------------- */
+  var box = null;
+  function paint(){
+    if (!box) return;
+    var rng = FB.usesRandom();
+    if (FB.inPaid) {   /* a paid entry's own run: no date, and nothing to toggle */
+      box.innerHTML = '<span class="fb-seed-lbl"><span class="l">Your paid run</span><span class="s">PAID</span></span>';
+      return;
+    }
+    var long  = !rng ? 'Today' : FB.daily ? 'Daily Challenge' : 'Practice run';
+    var short = !rng ? 'TODAY' : FB.daily ? 'DAILY' : 'PRACTICE';
+    box.innerHTML =
+      '<span class="fb-seed-lbl"><span class="l">' + long + '</span>' +
+        '<span class="s">' + short + '</span></span>' +
+      '<span class="fb-seed-day">' +
+        (rng && !FB.daily ? 'random' : FB.dayKey()) + '</span>' +
+      (rng ? '<button class="fb-seed-btn" type="button">' +
+             (FB.daily ? 'Practise' : 'Today') + '</button>' : '');
+    var btn = box.querySelector('.fb-seed-btn');
+    if (btn) btn.addEventListener('click', function(){
+      FB.practice(FB.daily);
+      try { localStorage.setItem('fb-seed-practice', FB.daily ? '0' : '1'); } catch (e) {}
+    });
+  }
+  /* A game only reveals that it uses randomness once it has drawn some, which
+   * is usually a frame or two into the first run. Repaint on a slow tick until
+   * it does, then stop — cheap, and it needs no per-game knowledge. */
+  var watch = setInterval(function(){
+    if (!box) return;
+    if (FB.usesRandom()){ paint(); clearInterval(watch); }
+  }, 1000);
+  function mount(){
+    if (box || !document.body) return;
+    var css = document.createElement('style');
+    /* IN FLOW, never position:fixed. The first version floated this bottom-left
+     * and on a 375px phone it sat directly on top of the d-pad — measured, not
+     * guessed: the badge occupied y 766-804 and padL/padR occupied 741-799, so
+     * a child pressing LEFT would have hit "Practise". A floating control has
+     * to dodge every game's layout forever; an in-flow chip in the topbar,
+     * which is where the stickiness layer already puts its personal-best chip,
+     * cannot collide with anything by construction. */
+    css.textContent =
+      '.fb-seed{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;vertical-align:middle;' +
+      "font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;" +
+      'color:#7fb0ff;background:rgba(58,111,247,.14);border:1px solid rgba(58,111,247,.38);' +
+      'padding:3px 4px 3px 8px;border-radius:999px;flex:0 0 auto;min-width:0}' +
+      '.fb-seed-lbl{letter-spacing:.06em}' +
+      '.fb-seed-day{opacity:.72;font-weight:600;font-variant-numeric:tabular-nums}' +
+      '.fb-seed-btn{appearance:none;border:0;cursor:pointer;background:rgba(58,111,247,.28);' +
+      'color:#bcd4ff;border-radius:999px;padding:4px 8px;min-height:26px;' +
+      'font:inherit;font-size:10px;letter-spacing:.04em}' +
+      '.fb-seed-btn:focus-visible{outline:2px solid #3a6ff7;outline-offset:2px}' +
+      '.fb-seed .s{display:none}' +
+      /* The game's own NAME outranks this chip. At 375px the long label pushed
+       * "WING 106" out of the topbar and left the title rendering as "W..",
+       * so below 560px the chip drops the date and uses its short label. A
+       * badge that costs a game its title is not worth the information. */
+      '@media (max-width:560px){.fb-seed{font-size:10px;padding:3px 3px 3px 7px;gap:4px}' +
+      '.fb-seed-day{display:none}.fb-seed .l{display:none}.fb-seed .s{display:inline}}';
+    document.head.appendChild(css);
+    box = document.createElement('span');
+    box.className = 'fb-seed';
+    box.setAttribute('role', 'status');
+    /* beside the title, after the personal-best chip if one is already there */
+    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
+    var anchor = title && title.parentNode ? title : null;
+    if (anchor) {
+      var after = anchor.nextSibling;
+      while (after && after.className === 'fb-best') after = after.nextSibling;
+      anchor.parentNode.insertBefore(box, after);
+    } else {
+      /* no topbar (a non-chassis game): append to the main column, still in
+       * flow, so it lands under the controls rather than on top of them */
+      (document.querySelector('.wrap') || document.body).appendChild(box);
+    }
+    paint();
+  }
+
+  /* From <head> the topbar does not exist yet: mount only once the document is
+   * parsed, or the chip lands wherever the fallback puts it and stays there.
+   * A chip that fails to mount must never take the seed down with it. */
+  function boot(){ scan(); if (document.readyState !== 'loading') { try { mount(); } catch (e) {} } }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  setTimeout(boot, 0);   /* the Engine global is assigned after this script */
+})();
+</script>
+<style id="fb-outro-css">
+/* ==========================================================================
+   FinnBots OUTRO LAYER — the ending screen.  Founder, 2026-10-02, verbatim:
+   "there need to be a cool ending screen to games not just they end or game
+   over".
+
+   SOURCE OF TRUTH. Injected by apply-outro.js as <style id="fb-outro-css">,
+   last in <head> so it lands after the brand and device layers and wins by
+   source order. Never hand-edit a game's copy: edit this file and re-run the
+   injector across the roster.
+
+   What was there before: the chassis run-over card is a RECEIPT. "RUN OVER",
+   one score, one time, a retry button — identical whether the player cleared
+   the last round or walked into the first enemy. Nothing resolves, nothing is
+   celebrated, and the score has nothing to sit beside, so a good run and a bad
+   run feel the same. This layer turns that receipt into the four beats an
+   arcade ending actually has: a VERDICT that distinguishes winning from dying,
+   a TALLY that counts up, a RANK the run earned against the real board, and a
+   HOOK back into the next run.
+
+   Rules it is built to:
+     - every rule is scoped under .fb-outro or a body.fb-outro-* state, so a
+       game without the layer's own nodes is untouched. No existing selector is
+       redefined.
+     - the chassis card's own furniture stays in the DOM and keeps its text:
+       #oScore still holds the final score for the stickiness layer, the score
+       memo and the gates that read it. We hide the plain readout and draw our
+       own beside it, we never retype theirs.
+     - laptop / tablet / phone from ONE layer (Founder, 2026-09-25). The card is
+       height-bound on a landscape phone, so there is a compact mode at
+       max-height:560px that drops the hero and tightens the tally rather than
+       scrolling.
+     - prefers-reduced-motion kills every animation, and the ending still reads:
+       the tally lands on its final value, the rank bar is drawn full.
+   ========================================================================== */
+
+/* ---- 1. the outro block inside the existing card --------------------- */
+.fb-outro{ display:block; text-align:left; margin:10px 0 2px; }
+.fb-outro[hidden]{ display:none; }
+
+/* the chassis ".big" score readout: kept in the DOM, hidden from view, because
+   the tally below says the same number with ceremony. visibility, not display:
+   a display:none subtree reports zero size and two gates measure this node. */
+.fb-outro-on .card .big{ position:absolute; width:1px; height:1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; }
+/* the per-game stat line is harvested into tally rows, so the original would be
+   a duplicate */
+.fb-outro-on .card > p.fb-outro-src{ display:none; }
+
+/* ---- 2. the verdict band -------------------------------------------- */
+.fb-outro-kicker{ display:block; font-family:var(--body,system-ui); font-size:10.5px;
+  letter-spacing:.18em; text-transform:uppercase; font-weight:700;
+  color:inherit; opacity:.6; margin:0 0 2px; text-align:center; }
+.fb-outro-win .fb-outro-kicker{ color:var(--amber,#f2a03d); opacity:1; }
+
+/* ---- 3. the hero. Founder, 2026-09-25: "the hero needs to be Bot 106" ---
+   He is the one who just played the run, so he is the one on the ending
+   screen: lit and lifted on a clear, dimmed and tilted on a loss. */
+.fb-outro-hero{ display:block; margin:6px auto 8px; width:76px; height:76px;
+  object-fit:contain; image-rendering:auto;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+/* `display:block` on a class BEATS the UA's `[hidden]` rule, so the hero the
+   layer hides on a decode error was still laid out — and a game that ships no
+   hero PNG (Bot Merge) drew a broken-image box in the middle of its ending.
+   Caught by playing the one game on the roster without the asset. */
+.fb-outro-hero[hidden]{ display:none; }
+.fb-outro-win .fb-outro-hero{
+  animation:fb-outro-pop .5s cubic-bezier(.2,1.5,.4,1) both;
+  filter:drop-shadow(0 0 14px rgba(242,160,61,.75)) drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+.fb-outro-end .fb-outro-hero{ transform:rotate(-7deg); opacity:.82; }
+@keyframes fb-outro-pop{ from{ transform:scale(.4) translateY(14px); opacity:0 }
+                           to{ transform:none; opacity:1 } }
+
+/* ---- 4. the tally ---------------------------------------------------- */
+.fb-outro-tally{ list-style:none; margin:0; padding:0; }
+.fb-outro-tally li{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; font-size:12.5px; line-height:1.25; padding:3px 0;
+  color:inherit;
+  border-bottom:1px dashed rgba(128,128,128,.3);
+  opacity:0; transform:translateY(4px);
+  animation:fb-outro-row .22s ease-out both; }
+.fb-outro-tally li b{ font-family:var(--disp,system-ui); font-size:14px; font-weight:400;
+  color:inherit; white-space:nowrap; }
+.fb-outro-tally li i{ font-style:normal; letter-spacing:.06em; text-transform:uppercase;
+  font-size:10.5px; font-weight:700; color:inherit; opacity:.62; }
+@keyframes fb-outro-row{ to{ opacity:1; transform:none } }
+
+/* the total. This is the line the whole screen exists to deliver, so it is the
+   only thing on the card in the display face at full size. */
+.fb-outro-total{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; margin:8px 0 2px; padding-top:7px; border-top:2px solid rgba(128,128,128,.4); }
+.fb-outro-total i{ font-style:normal; font-family:var(--body,system-ui); font-size:11px;
+  letter-spacing:.16em; text-transform:uppercase; font-weight:700;
+  color:inherit; opacity:.62; }
+.fb-outro-total b{ font-family:var(--disp,system-ui); font-size:30px; line-height:1;
+  color:var(--amber,#f2a03d); font-weight:400;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+.fb-outro-counting .fb-outro-total b{ color:inherit; }
+
+/* ---- 5. the rank the run earned ------------------------------------- */
+.fb-outro-rank{ margin:9px 0 0; }
+.fb-outro-rank .fb-outro-title{ display:flex; align-items:center; justify-content:space-between;
+  gap:8px; font-family:var(--disp,system-ui); font-size:15px; line-height:1.1;
+  color:inherit; }
+.fb-outro-rank .fb-outro-title em{ font-style:normal; font-family:var(--body,system-ui);
+  font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:inherit; opacity:.62; white-space:nowrap; }
+.fb-outro-bar{ position:relative; height:7px; margin:6px 0 0; border-radius:999px;
+  background:rgba(128,128,128,.28); overflow:hidden; }
+.fb-outro-bar span{ position:absolute; inset:0 auto 0 0; width:0;
+  border-radius:999px; background:var(--amber,#f2a03d);
+  transition:width .7s cubic-bezier(.2,.8,.3,1); }
+.fb-outro-note{ display:block; margin:5px 0 0; font-size:11.5px; line-height:1.4;
+  color:inherit; opacity:.75; }
+.fb-outro-note b{ color:inherit; font-weight:700; }
+
+/* ---- 5b. the chassis button row ------------------------------------
+   The stickiness layer inserts its run-line immediately before #retryBtn, so
+   on a game whose buttons live in a flex .btnrow (BotFord) the line becomes a
+   FLEX ITEM and sits beside the button instead of above it. It was tolerable
+   on the old two-line card and looks broken under a full ending screen, so
+   give it its own row — scoped to .fb-outro-on, so a game without this layer
+   keeps exactly the layout it shipped with. */
+.fb-outro-on .fb-runline small{ display:block; }
+.fb-outro-on .card .btnrow{ flex-wrap:wrap; justify-content:center; }
+.fb-outro-on .card .btnrow > .fb-runline{ flex:1 0 100%; margin:0 0 4px; text-align:center; }
+
+/* ---- 6. the skip affordance ----------------------------------------- */
+.fb-outro-skip{ display:block; margin:7px 0 0; font-size:10.5px; letter-spacing:.08em;
+  text-transform:uppercase; font-weight:700; color:inherit;
+  text-align:center; opacity:.55; }
+.fb-outro-counting .fb-outro-skip{ opacity:.8 }
+.fb-outro:not(.fb-outro-counting) .fb-outro-skip{ display:none }
+
+/* ---- 7. the win flourish. Pure CSS, no canvas, no library: eight sparks on
+   a one-shot animation, removed from the DOM when it ends. Decorative only —
+   aria-hidden, pointer-events:none, and it never covers the retry button. */
+.fb-outro-sparks{ position:absolute; inset:0; overflow:hidden; pointer-events:none;
+  border-radius:inherit; }
+.fb-outro-sparks i{ position:absolute; top:-8px; width:7px; height:11px; border-radius:2px;
+  opacity:0; animation:fb-outro-fall 1.5s linear both; }
+@keyframes fb-outro-fall{
+  0%{ opacity:0; transform:translateY(-10px) rotate(0) }
+  12%{ opacity:1 }
+  100%{ opacity:0; transform:translateY(420px) rotate(540deg) } }
+
+/* the card becomes the positioning context for the sparks and sits above the
+   overlay's own backdrop blur */
+.fb-outro-on .card{ position:relative; }
+
+/* ---- 8. laptop / tablet / phone ------------------------------------- */
+/* a landscape phone gives the card ~360px of height: drop the hero, tighten
+   every row, shrink the total. The ending still has all four beats. */
+@media (max-height:560px){
+  /* measured on a 740x360 landscape phone: the full card came to 378px against
+     360px of viewport, which clipped the verdict off the top. These reclaim
+     ~30px of chrome so the whole ending, including the replay button, fits
+     without scrolling. */
+  .fb-outro-on .card{ padding:14px 18px }
+  .fb-outro{ margin:5px 0 0 }
+  .fb-outro-kicker{ font-size:9.5px; margin:0 }
+  .fb-outro-hero{ display:none }
+  .fb-outro-tally li{ font-size:11.5px; padding:1px 0 }
+  .fb-outro-tally li b{ font-size:12.5px }
+  .fb-outro-total{ margin:5px 0 0; padding-top:5px }
+  .fb-outro-total b{ font-size:23px }
+  .fb-outro-rank{ margin:6px 0 0 }
+  .fb-outro-note{ font-size:10.5px }
+  .fb-outro-sparks{ display:none }
+}
+/* a very narrow phone: let a long row wrap instead of squeezing the number */
+@media (max-width:360px){
+  .fb-outro-tally li{ font-size:11.5px }
+  .fb-outro-total b{ font-size:26px }
+}
+
+/* ---- 9. INK IS INHERITED, NOT ASSUMED ------------------------------
+   Every colour above is `inherit` plus an opacity, and every rule and track is
+   a neutral grey with alpha. There is no dark-mode block, because there is
+   nothing left for one to correct.
+
+   This replaced a block that redeclared each node for `prefers-color-scheme:
+   dark`, which quietly assumed every run-over card is LIGHT in light mode. Two
+   are not: Bot Merge's is `--card`/`--ink`, and Bot Pong's is dark in both
+   schemes. A real match played to 11-1 on Bot Pong rendered the whole tally in
+   near-black on near-black — present in the DOM, read back correctly by the
+   gate, and invisible to the player. Inheriting is not a tidier way to write
+   the same thing; it is the only version that cannot be wrong about a surface
+   it has never seen. */
+
+/* ---- 10. reduced motion: no animation, and the ending still reads ----
+   Every animated property above has its resting state asserted here, because
+   `animation:none` on a `both`-filled keyframe leaves the element at its FROM
+   value — which for a tally row is opacity:0. Turning motion off must not turn
+   the ending screen off. */
+@media (prefers-reduced-motion:reduce){
+  .fb-outro-tally li{ opacity:1; transform:none; animation:none }
+  .fb-outro-hero{ animation:none; transform:none }
+  .fb-outro-bar span{ transition:none }
+  .fb-outro-sparks{ display:none }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <!--fb:pill--><a class="fb-mark" href="https://games.finnstergram.com" aria-label="FinnBots — more games"><svg class="fb-bot" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M14 5.4V3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="2" r="1.85" fill="var(--fb-amber)"/><rect x="1" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="24.4" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="3.6" y="5" width="20.8" height="18" rx="5.5" fill="currentColor"/><rect x="6.6" y="8.6" width="14.8" height="9.4" rx="2.6" fill="var(--fb-screen)"/><circle cx="10.7" cy="13.3" r="1.9" fill="var(--fb-amber)"/><circle cx="17.3" cy="13.3" r="1.9" fill="var(--fb-amber)"/></svg><span class="fb-word">FINN<i>BOTS</i></span></a><!--/fb-->
+      <h1 class="title">WING 106</h1>
+      <button class="iconbtn" id="restartBtn" aria-label="Restart" title="Restart (R)">⟲</button>
+      <button class="iconbtn" id="infoBtn" aria-label="How to play">ⓘ</button>
+    </header>
+
+    <div class="modebar" role="tablist" aria-label="Play mode">
+      <button class="modepill active" id="modeFree" type="button" role="tab">Free play</button>
+      <button class="modepill" id="modePaid" type="button" role="tab">Paid · 25 OIL</button>
+    </div>
+
+    <div class="testBanner hidden" id="testBanner">🧪 TEST MODE — local validator, fake $OIL. No real value moves.</div>
+
+    <div class="walletbar" id="walletbar">
+      <div class="walletrow">
+        <span class="lbl">Paid — 25 OIL entry · fun leaderboard, not verified</span>
+        <button class="connect-btn" id="connectBtn" type="button">Connect</button>
+      </div>
+      <div class="wallet-status hidden" id="walletStatus"></div>
+    </div>
+
+    <div class="facts" id="facts">
+      <span>Free to play</span><span class="dot-sep">·</span>
+      <span>wallet-free</span><span class="dot-sep">·</span>
+      <span><b>pays nothing</b></span>
+    </div>
+
+    <div class="hud" aria-live="polite">
+      <div><span class="lab">SCORE </span><span class="val" id="score">000000</span></div>
+      <div><span class="lab">BAY </span><span class="val" id="stat1">01</span></div>
+      <div><span class="lab">LIVES </span><span class="lives" id="lives"></span></div>
+    </div>
+
+    <main class="surface">
+      <canvas id="game" width="224" height="288" aria-label="WING 106 play area."></canvas>
+    </main>
+
+    <div class="controls twothumb" aria-label="Controls">
+      <div class="cluster move">
+        <button class="ctl big" id="padL" type="button" aria-label="Move left">◀</button>
+        <button class="ctl big" id="padR" type="button" aria-label="Move right">▶</button>
+      </div>
+      <button class="ctl fire" id="padFire" type="button" aria-label="Fire">FIRE</button>
+    </div>
+
+    <footer class="foot">
+      <div class="tag">a FinnBots game</div>
+      <div class="links">
+        <a href="https://magiceden.io/marketplace/finnbot" target="_blank" rel="noopener">Buy a Bot</a>·
+        <a href="https://games.finnstergram.com/" target="_blank" rel="noopener">More games</a>·
+        <a href="https://wing.finnstergram.com/leaderboard.html" target="_blank" rel="noopener">Leaderboard</a>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Rules overlay (auto-opens as an intro on first load) -->
+  <div class="overlay" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="card">
+      <h2 id="rulesTitle">HOW TO PLAY</h2>
+      <ul class="rules">
+        <li><b>Hold the bay.</b> Bot 106 is locked to the bottom rail — shoot the swarm as it convoys in, parks, and dive-bombs.</li>
+        <li><b>Move:</b> ← → / A D / the d-pad, or <b>drag on the screen</b>. <b>Fire:</b> Space / Z / <b>GO</b> / tap. Max 2 shots up at once.</li>
+        <li><b>BOSS takes two hits</b> (it changes colour on the first). A Boss can fire a <b>tractor beam</b> — get caught and it parks a red 106 and costs a life.</li>
+        <li><b>Rescue = dual wing:</b> shoot that Boss while it <i>dives</i> and your red 106 docks beside you — two ships, twice the fire.</li>
+        <li>Every 4th bay from 3 is a <b>CHALLENGING BAY</b>: no enemy fire, clear all 40 for <b>10,000</b>. High score ranks on the leaderboard.</li>
+      </ul>
+      <p class="safe">Free play never touches a wallet, never asks for a seed phrase, and never moves a Bot.</p>
+      <button class="btn" id="rulesClose">Got it</button>
+    </div>
+  </div>
+
+  <!-- Game-over overlay (FREE) -->
+  <div class="overlay" id="overOverlay" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+    <div class="card" id="overCard">
+      <h2 id="overTitle">SHIFT OVER</h2>
+      <div class="big">SCORE <span id="oScore">0</span></div>
+      <p><b id="oTime">Bay 1 · 0 kills</b></p>
+      <button class="btn" id="retryBtn">Tap to retry</button>
+    </div>
+  </div>
+
+  <!-- Paid overlay (start/run-over card; innerHTML written by the Paid controller) -->
+  <div class="overlay" id="paidOverlay" role="dialog" aria-modal="true"></div>
+
+  <!-- Kid-safety confirm gate (before any wallet code runs) -->
+  <div class="sheet" id="confirmSheet"><div class="panel">
+    <h2>Play WING 106 — Paid</h2>
+    <p>One entry = one run. Costs <b>25 OIL</b> to the treasury (a sink). Pays nothing out — you're playing for a leaderboard spot. Bot holders: score ×1.5.<br/><br/>A <b>fun ranking</b> — not verified.</p>
+    <button class="again" id="confirmEnter" type="button">Connect &amp; Pay</button>
+    <button class="ghostbtn" id="confirmBack" type="button">Cancel</button>
+  </div></div>
+
+  <!-- Score-posted sheet -->
+  <div class="sheet" id="postedSheet"><div class="panel">
+    <h2>Score posted!</h2>
+    <p id="posted-text"></p>
+    <a class="ghostbtn" id="viewLb" href="https://wing.finnstergram.com/leaderboard.html" target="_blank" rel="noopener">View leaderboard →</a>
+    <button class="again" id="againBtn" type="button">Play again (25 OIL)</button>
+  </div></div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   WING 106 — FinnBots.  ENGINE (Free gameplay).
+   FinnBots-original take on the the formation-shooter original (1981) arcade loop:
+   convoy-in → 40-slot formation with sway → peel-off dives → BOSS tractor beam
+   → capture (park a red 106) → rescue on an attack dive → DUAL WING → every
+   4th bay from #3 is a CHALLENGING BAY (no fire, perfect clear = 10,000).
+   All-original art and names. Hero = Bot 106 (drawn in pixels).
+   Contract kept for the frozen chassis:
+     - export { newRun, stepGame } (headless) — no-input run reaches phase 'dead'.
+     - window.WING106Engine = { start, idle, resumeFree, state }.
+     - on run end -> window.WING106Paid.onRunEnd(res); res={score,bay,kills,timeMs}.
+     - NO wallet / RPC / memo / money symbol in here.
+   ========================================================================== */
+
+const CFG = { name:'WING 106', memoNS:'WING', chassis:'sink-leaderboard',
+              subdomain:'wing.finnstergram.com', port:9014, hero:106, accent:'#7fd7ff', entryOIL:25, scorePost:1 };
+
+/* ---- world ---------------------------------------------------------------- */
+const RUN = { w:224, h:288 };
+const RAIL_Y = 262;
+const CX = RUN.w/2;
+const SPX = 18, SPY = 20, FORM_TOP = 44;
+const ROWS = [
+  { type:'BOSS', cols:[3,4,5,6] },
+  { type:'DOME', cols:[1,2,3,4,5,6,7,8] },
+  { type:'DOME', cols:[1,2,3,4,5,6,7,8] },
+  { type:'TICK', cols:[0,1,2,3,4,5,6,7,8,9] },
+  { type:'TICK', cols:[0,1,2,3,4,5,6,7,8,9] },
+];
+const colX = c => CX + (c-4.5)*SPX;
+const rowY = r => FORM_TOP + r*SPY;
+const lerp = (a,b,k) => a+(b-a)*k;
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+function bez(p0,p1,p2,p3,t){ const u=1-t, uu=u*u, tt=t*t;
+  return [ uu*u*p0[0]+3*uu*t*p1[0]+3*u*tt*p2[0]+tt*t*p3[0],
+           uu*u*p0[1]+3*uu*t*p1[1]+3*u*tt*p2[1]+tt*t*p3[1] ]; }
+
+function makeStars(){ const a=[]; for(let i=0;i<52;i++){ a.push({ x:Math.random()*RUN.w, y:Math.random()*RUN.h, sp:0.15+Math.random()*0.5 }); } return a; }
+
+/* ---- run state ------------------------------------------------------------ */
+function newRun(){
+  const s = { phase:'play', score:0, hi:0, lives:3, bay:1, kills:0, tMs:0,
+    player:{ x:CX, y:RAIL_Y, alive:true, dead:false, dual:false, invuln:1000, respawn:0 },
+    shots:[], ebullets:[], enemies:[], parts:[], rescues:[],
+    beam:null, captureT:0, msg:null, msgT:0,
+    spd:1, diveTimer:1800, clearBeat:0,
+    nextExtra:20000, extraStep:70000,   // arcade the formation-shooter original default: 1st bonus 20,000, then every 70,000
+    stars: makeStars(),
+    inDX:0, inFire:false, _fireCd:0,
+    challenge:false, chGroupKills:[0,0,0,0,0], chDestroyed:0, chBonusPer:1000 };
+  setupBay(s);
+  return s;
+}
+
+function setupBay(s){
+  s.enemies=[]; s.shots=[]; s.ebullets=[]; s.rescues=[]; s.beam=null; s.captureT=0; s.clearBeat=0;
+  s.spd = 1 + (s.bay-1)*0.06;
+  s.diveTimer = 1600;
+  s.challenge = (s.bay % 4 === 3); s._chScored=false;
+  s.msg = s.challenge ? 'CHALLENGING BAY' : ('BAY '+String(s.bay).padStart(2,'0'));
+  s.msgT = 1600;
+  if(s.challenge){ setupChallenge(s); return; }
+  // Normal bay: convoy-in order — front ticks, back ticks, domes, domes, bosses.
+  const order = [ {row:4,side:'L'}, {row:3,side:'R'}, {row:2,side:'L'}, {row:1,side:'R'}, {row:0,side:'T'} ];
+  let spawnAt = 350;
+  order.forEach(o => {
+    const def = ROWS[o.row];
+    def.cols.forEach(col => { s.enemies.push(makeEnemy(s, def.type, o.row, col, o.side, spawnAt)); spawnAt += 85; });
+    spawnAt += 500;
+  });
+}
+
+function makeEnemy(s, type, row, col, side, spawnAt){
+  const hx=colX(col), hy=rowY(row);
+  let p0,p1,p2;
+  if(side==='L'){ p0=[-24,26]; p1=[150,300]; p2=[16,120]; }
+  else if(side==='R'){ p0=[RUN.w+24,26]; p1=[74,300]; p2=[208,120]; }
+  else { p0=[CX,-24]; p1=[22,150]; p2=[202,150]; }
+  return { type, row, col, hx, hy, x:p0[0], y:p0[1], p0,p1,p2,
+    st:'wait', t:0, dt:0, spawnAt, enterDur:1200/s.spd,
+    hits:0, colorHit:false, bob:Math.random()*6.28, zig:Math.random()*6.28,
+    fireCd:600+Math.random()*900, shotsThisDive:0,
+    diveKind:null, escortOf:null, escortAtDive:0, captive:false,
+    rx0:0, ry0:0, grp:0, left:false };
+}
+
+function setupChallenge(s){
+  s.chGroupKills=[0,0,0,0,0]; s.chDestroyed=0;
+  s.chBonusPer = s.bay<=7?1000 : s.bay<=15?1500 : s.bay<=23?2000 : 3000;
+  let spawnAt=400;
+  for(let g=0; g<5; g++){
+    const side = (g%2)?'R':'L';
+    const type = g<2?'TICK' : g<4?'DOME':'BOSS';
+    for(let i=0;i<8;i++){ s.enemies.push(makeChallengeEnemy(s,type,g,i,side,spawnAt)); spawnAt+=130; }
+    spawnAt += 650;
+  }
+}
+function makeChallengeEnemy(s,type,g,i,side,spawnAt){
+  const e = makeEnemy(s,type,0,0,side,spawnAt);
+  e.grp=g; e.st='wait';
+  // Big sweeping loop across the bay, then exit — reuse 2 mirrored paths.
+  if(side==='L'){ e.cp=[[-24,40],[70,300],[220,20],[RUN.w+24,240]]; }
+  else          { e.cp=[[RUN.w+24,40],[154,300],[4,20],[-24,240]]; }
+  e.chDur = 2600/s.spd;
+  return e;
+}
+
+/* ---- per-tick ------------------------------------------------------------- */
+function stepGame(s, dt){
+  const ev={};
+  if(s.phase!=='play') return ev;
+  s.tMs += dt;
+  if(s.msgT>0){ s.msgT-=dt; if(s.msgT<0)s.msgT=0; }
+  updateStars(s,dt);
+
+  const P=s.player;
+  if(P.dead){ P.respawn-=dt; if(P.respawn<=0 && s.lives>0){ P.dead=false; P.alive=true; P.x=CX; P.dual=false; P.invuln=1500; } }
+  if(P.invuln>0) P.invuln-=dt;
+  if(P.alive && !P.dead){ P.x = clamp(P.x + (s.inDX||0)*2.4*(dt/16.67), 12, RUN.w-12); }
+
+  s._fireCd -= dt;
+  if(P.alive && !P.dead && s.inFire && s._fireCd<=0) tryFire(s,ev);
+
+  updateShots(s,dt);
+  s.enemies.forEach(e => { if(e.st!=='dead') stepEnemy(s,e,dt,ev); });
+  updateEBullets(s,dt);
+  updateBeam(s,dt,ev);
+  updateRescues(s,dt,ev);
+  collideShots(s,ev);
+  collidePlayer(s,ev);
+  updateParts(s,dt);
+
+  if(s.score>=s.nextExtra){ s.lives++; s.nextExtra+=s.extraStep; ev.extra=true; }
+  progressBay(s,dt,ev);
+  if(s.score>s.hi) s.hi=s.score;
+  return ev;
+}
+
+function tryFire(s,ev){
+  const cap = s.player.dual?4:2;
+  if(s.shots.length>=cap) return;
+  if(s.player.dual){
+    if(s.shots.length>2) return;
+    s.shots.push({x:s.player.x-9,y:RAIL_Y-10}); s.shots.push({x:s.player.x+9,y:RAIL_Y-10});
+  } else {
+    s.shots.push({x:s.player.x,y:RAIL_Y-10});
+  }
+  s._fireCd = 150; ev.shot=true;
+}
+function updateShots(s,dt){ const f=dt/16.67;
+  for(let i=s.shots.length-1;i>=0;i--){ s.shots[i].y -= 6*f; if(s.shots[i].y<-8) s.shots.splice(i,1); } }
+function updateEBullets(s,dt){ const f=dt/16.67;
+  for(let i=s.ebullets.length-1;i>=0;i--){ const b=s.ebullets[i]; b.x+=b.vx*f; b.y+=b.vy*f;
+    if(b.y>RUN.h+8||b.x<-8||b.x>RUN.w+8) s.ebullets.splice(i,1); } }
+function updateStars(s,dt){ const f=dt/16.67;
+  s.stars.forEach(st=>{ st.y+=st.sp*f; if(st.y>RUN.h){ st.y=0; st.x=Math.random()*RUN.w; } }); }
+function updateParts(s,dt){ for(let i=s.parts.length-1;i>=0;i--){ const p=s.parts[i]; p.t+=dt; if(p.t>=p.life) s.parts.splice(i,1); } }
+function explosion(s,x,y){ s.parts.push({x,y,t:0,life:340}); }
+
+/* ---- enemy state machine -------------------------------------------------- */
+function stepEnemy(s,e,dt,ev){
+  const sway = Math.sin(s.tMs*0.0011)*10;
+  switch(e.st){
+    case 'wait': if(s.tMs>=e.spawnAt){ e.st = s.challenge?'chIn':'enter'; e.t=0; } return;
+    case 'enter': { e.t+=dt; const k=Math.min(1,e.t/e.enterDur); const p=bez(e.p0,e.p1,e.p2,[e.hx,e.hy],k); e.x=p[0]; e.y=p[1]; if(k>=1){ e.st='idle'; e.bob=Math.random()*6.28; } return; }
+    case 'idle': { e.bob+=dt*0.004; e.x=e.hx+sway; e.y=e.hy+Math.sin(e.bob)*1.6; return; }
+    case 'reslot': { e.t+=dt; const k=Math.min(1,e.t/720); e.x=lerp(e.rx0,e.hx+sway,k); e.y=lerp(e.ry0,e.hy,k); if(k>=1) e.st='idle'; return; }
+    case 'loop': return stepBossLoop(s,e,dt,ev);
+    case 'beamMove': return stepBeamMove(s,e,dt,ev);
+    case 'beam': return; /* held by updateBeam */
+    case 'dive': return (e.type==='BOSS'?stepBossDive:stepDive)(s,e,dt,ev);
+    case 'uturn': { e.dt+=dt; e.y -= 1.7*s.spd*(dt/16.67); e.x += Math.sin(s.tMs*0.02+e.zig)*0.7;
+      if(e.y<-14){ e.st='reslot'; e.rx0=e.x; e.ry0=-14; e.t=0; } return; }
+    case 'chIn': return stepChallengeEnemy(s,e,dt,ev);
+    default: return;
+  }
+}
+
+function startDive(s,e){ e.st='dive'; e.dt=0; e.diveKind=null; e.shotsThisDive=0; e.fireCd=350+Math.random()*400; }
+function startBossDive(s,e,kind){
+  e.st='loop'; e.dt=0; e.diveKind=kind; e.shotsThisDive=0; e.fireCd=300;
+  if(kind==='attack'){
+    const escorts = s.enemies.filter(x=>x.st==='idle' && x.type==='DOME').slice(0, Math.random()<0.5?2:1);
+    escorts.forEach(x=>{ startDive(s,x); x.escortOf=e; });
+    e.escortAtDive = escorts.length;
+  } else { e.escortAtDive=0; }
+}
+
+function stepDive(s,e,dt,ev){
+  const P=s.player, f=dt/16.67;
+  e.dt+=dt;
+  const vy = (1.6 + Math.min(1.5, e.dt/1100)) * s.spd;
+  e.y += vy*f;
+  let steer = (P.x - e.x)*0.03;
+  if(e.type==='DOME') steer += Math.cos(s.tMs*0.012 + e.zig)*1.5;   // zig-zag
+  e.x = clamp(e.x + steer*f, 6, RUN.w-6);
+  maybeEnemyFire(s,e,dt);
+  if(e.y > RAIL_Y+26){ e.st='uturn'; e.dt=0; }
+}
+function stepBossLoop(s,e,dt,ev){
+  e.dt+=dt; const a=(e.dt/600)*Math.PI*2;
+  e.x=e.hx+Math.cos(a)*18; e.y=e.hy+Math.sin(a)*9 + (e.dt/600)*10;
+  if(e.dt>=600){ e.dt=0; e.bx0=e.x; e.st = (e.diveKind==='beam')?'beamMove':'dive'; }
+}
+function stepBeamMove(s,e,dt,ev){
+  const P=s.player; e.dt+=dt; const k=Math.min(1,e.dt/700);
+  e.x = lerp(e.bx0, clamp(P.x, 40, RUN.w-40), k*0.7);
+  e.y = lerp(e.hy, RUN.h*0.6, k);
+  if(k>=1){ e.st='beam'; s.beam={ boss:e, t:2200 }; ev.beamOn=true; }
+}
+function stepBossDive(s,e,dt,ev){
+  const P=s.player, f=dt/16.67;
+  e.dt+=dt;
+  const vy=(1.45 + Math.min(1.2, e.dt/1400))*s.spd;
+  e.y += vy*f;
+  e.x = clamp(e.x + (P.x-e.x)*0.02*f + Math.sin(s.tMs*0.006+e.zig)*0.6, 8, RUN.w-8);
+  maybeEnemyFire(s,e,dt);
+  if(e.y>RAIL_Y+30){ e.st='reslot'; e.rx0=e.x; e.ry0=-14; e.y=-14; e.x=e.hx; e.t=0; }
+}
+function maybeEnemyFire(s,e,dt){
+  if(s.challenge) return;
+  if(e.shotsThisDive>=2) return;
+  if(s.bay<2 && Math.random()<0.985) { e.fireCd-=dt; return; } // bay 1 barely fires (still terminates)
+  e.fireCd-=dt;
+  if(e.fireCd<=0){
+    e.fireCd = 480+Math.random()*650;
+    if(s.ebullets.length>=8) s.ebullets.shift();
+    const P=s.player, dx=P.x-e.x, dy=Math.max(20,RAIL_Y-e.y), m=Math.hypot(dx,dy)||1, sp=1.8+s.bay*0.05;
+    s.ebullets.push({ x:e.x, y:e.y+6, vx:dx/m*sp, vy:Math.max(1,dy/m*sp) });
+    e.shotsThisDive++;
+  }
+}
+
+/* ---- tractor beam + capture ---------------------------------------------- */
+function updateBeam(s,dt,ev){
+  if(!s.beam) return;
+  const b=s.beam, e=b.boss, P=s.player;
+  // Arcade the formation-shooter original: shooting the Boss while its tractor beam is out CANCELS the beam.
+  // Without this the beam outlived its owner, kept pulling, and doCapture then
+  // resurrected the destroyed Boss into 'reslot' — a corpse grabbing your ship.
+  if(!e || e.st==='dead'){ s.beam=null; s.captureT=0; return; }
+  b.t-=dt;
+  const half=26;
+  if(P.alive && !P.dead && !P.dual && P.invuln<=0 && Math.abs(P.x-e.x)<half){
+    s.captureT+=dt;
+    if(s.captureT>=350){ doCapture(s,e,ev); return; }
+  } else s.captureT=0;
+  if(b.t<=0){ s.beam=null; s.captureT=0; e.st='reslot'; e.rx0=e.x; e.ry0=e.y; e.t=0; }
+}
+function doCapture(s,e,ev){
+  s.beam=null; s.captureT=0;
+  if(!e || e.st==='dead') return;      // no capture from a destroyed Boss — never resurrect one
+  const P=s.player;
+  P.alive=false; P.dead=true; s.lives--;
+  e.captive=true; e.st='reslot'; e.rx0=e.x; e.ry0=e.y; e.t=0;
+  s.msg='106 CAPTURED'; s.msgT=1700; ev.capture=true;
+  explosion(s,P.x,RAIL_Y);
+  if(s.lives<=0){ s.phase='dead'; ev.over=true; } else P.respawn=1500;
+}
+function updateRescues(s,dt,ev){
+  const f=dt/16.67, P=s.player;
+  for(let i=s.rescues.length-1;i>=0;i--){ const r=s.rescues[i];
+    r.y += 2.0*f; r.x += (P.x-r.x)*0.04*f;
+    if(r.y >= RAIL_Y-3){ if(P.alive && !P.dead){ P.dual=true; P.invuln=Math.max(P.invuln,700); ev.dual=true; } s.rescues.splice(i,1); }
+  }
+}
+
+/* ---- collisions ----------------------------------------------------------- */
+function collideShots(s,ev){
+  for(let i=s.shots.length-1;i>=0;i--){ const sh=s.shots[i]; let hit=false;
+    for(const r of s.rescues){ if(!r.dead && Math.abs(sh.x-r.x)<8 && Math.abs(sh.y-r.y)<9){ r.dead=true; s.score+=1000; explosion(s,r.x,r.y); hit=true; ev.rescueKilled=true; break; } }
+    if(hit){ s.shots.splice(i,1); s.rescues=s.rescues.filter(r=>!r.dead); continue; }
+    for(const e of s.enemies){ if(e.st==='dead') continue;
+      if(e.type==='BOSS' && e.captive && e.st==='idle' && Math.abs(sh.x-e.x)<8 && Math.abs(sh.y-(e.y+13))<8){
+        e.captive=false; s.score+=1000; explosion(s,e.x,e.y+13); hit=true; ev.captiveKilled=true; break; }
+      const hw=e.type==='BOSS'?10:7, hh=e.type==='BOSS'?9:7;
+      if(Math.abs(sh.x-e.x)<hw && Math.abs(sh.y-e.y)<hh){
+        if(e.type==='BOSS'){
+          e.hits++;
+          if(e.hits<2){ e.colorHit=true; hit=true; ev.bossHit=true; break; }
+          const diving = (e.st!=='idle');
+          if(e.captive && diving){ s.rescues.push({x:e.x,y:e.y+13,dead:false}); e.captive=false; ev.rescueDrop=true; }
+          else if(e.captive){ e.captive=false; }
+          killEnemy(s,e,ev, e.st==='idle'); hit=true; break;
+        } else { killEnemy(s,e,ev, e.st==='idle'); hit=true; break; }
+      }
+    }
+    if(hit) s.shots.splice(i,1);
+  }
+}
+function killEnemy(s,e,ev,wasIdle){
+  e.st='dead'; e.left=false; s.kills++; explosion(s,e.x,e.y); ev.kill=e.type;
+  if(s.beam && s.beam.boss===e){ s.beam=null; s.captureT=0; ev.beamOff=true; }   // its beam dies with it
+  if(s.challenge){
+    s.score += 100;                     // arcade: every challenging-stage enemy is a flat 100
+    s.chGroupKills[e.grp]++; s.chDestroyed++;
+    if(s.chGroupKills[e.grp]===8){ s.score += s.chBonusPer; ev.groupBonus=true; }
+    return;
+  }
+  if(e.type==='TICK') s.score += wasIdle?50:100;
+  else if(e.type==='DOME') s.score += wasIdle?80:160;
+  else { s.score += wasIdle?150 : (e.escortAtDive>=2?1600 : e.escortAtDive===1?800 : 400); }
+}
+function collidePlayer(s,ev){
+  const P=s.player; if(!P.alive||P.dead) return;
+  const ph = P.dual?18:9;
+  for(let i=s.ebullets.length-1;i>=0;i--){ const b=s.ebullets[i];
+    if(Math.abs(b.x-P.x)<ph && Math.abs(b.y-RAIL_Y)<8){ s.ebullets.splice(i,1); hitPlayer(s,b.x,ev); if(P.dead)return; } }
+  for(const e of s.enemies){ if(e.st==='dead'||e.st==='idle'||e.st==='wait'||e.st==='enter') continue;
+    const hw=e.type==='BOSS'?10:7;
+    if(Math.abs(e.x-P.x)<ph+hw-4 && Math.abs(e.y-RAIL_Y)<10){ hitPlayer(s,e.x,ev); if(P.dead)return; } }
+}
+function hitPlayer(s,srcX,ev){
+  const P=s.player; if(P.invuln>0||P.dead||!P.alive) return;
+  if(P.dual){ P.dual=false; P.invuln=900; ev.peel=true; explosion(s, srcX<P.x?P.x-9:P.x+9, RAIL_Y); return; }
+  P.alive=false; P.dead=true; s.lives--; explosion(s,P.x,RAIL_Y); ev.playerDie=true;
+  if(s.lives<=0){ s.phase='dead'; ev.over=true; } else P.respawn=1500;
+}
+
+/* ---- bay progression ------------------------------------------------------ */
+function progressBay(s,dt,ev){
+  if(s.challenge){ progressChallenge(s,dt,ev); return; }
+  const spawnedAll = s.enemies.every(e=> e.st!=='wait');
+  const alive = s.enemies.filter(e=> e.st!=='dead');
+  const idlers = alive.filter(e=> e.st==='idle');
+  if(spawnedAll && idlers.length>0){
+    s.diveTimer-=dt;
+    if(s.diveTimer<=0){
+      launchDives(s,alive.length);
+      const base = Math.max(480, 1700 - s.bay*95);
+      const few  = alive.length<=3 ? 320 : 0;
+      s.diveTimer = Math.max(220, base-few) * (0.6+Math.random()*0.7);
+    }
+  }
+  if(spawnedAll && alive.length===0){
+    s.clearBeat += dt;
+    if(s.clearBeat>900){ s.bay++; setupBay(s); }
+  }
+}
+function launchDives(s, aliveCount){
+  const idlers = s.enemies.filter(e=>e.st==='idle');
+  if(!idlers.length) return;
+  const maxN = 1 + Math.floor(Math.random()*Math.min(3, 1+Math.floor(s.bay/3)));
+  let launched=0;
+  const bosses = idlers.filter(e=>e.type==='BOSS');
+  const capBoss = bosses.find(b=>b.captive);
+  const canBeam = s.bay>=2 && s.tMs>8000;
+  if(capBoss && Math.random()<0.55){ startBossDive(s,capBoss,'attack'); launched++; }
+  else if(canBeam && bosses.length && Math.random() < 0.16 + s.bay*0.02){ startBossDive(s,bosses[0],'beam'); launched++; }
+  while(launched<maxN){
+    const pool = s.enemies.filter(e=>e.st==='idle');
+    if(!pool.length) break;
+    const e = pool[Math.floor(Math.random()*pool.length)];
+    if(e.type==='BOSS') startBossDive(s,e,'attack'); else startDive(s,e);
+    launched++;
+  }
+}
+
+/* ---- challenging bay ------------------------------------------------------ */
+function stepChallengeEnemy(s,e,dt,ev){
+  e.t+=dt; const k=Math.min(1, e.t/e.chDur);
+  const p=bez(e.cp[0],e.cp[1],e.cp[2],e.cp[3],k); e.x=p[0]; e.y=p[1];
+  if(k>=1){ e.st='dead'; e.left=true; }   // flew the loop and left (not destroyed)
+}
+function progressChallenge(s,dt,ev){
+  const spawnedAll = s.enemies.every(e=> e.st!=='wait');
+  const remaining = s.enemies.filter(e=> e.st!=='dead');
+  if(spawnedAll && remaining.length===0){
+    if(!s._chScored){ s._chScored=true;
+      if(s.chDestroyed===40){ s.score+=10000; s.msg='PERFECT'; s.msgT=2000; ev.perfect=true; } }
+    s.clearBeat += dt;
+    if(s.clearBeat>1400){ s._chScored=false; s.bay++; setupBay(s); }
+  }
+}
+
+/* ---- headless export for VERIFY ------------------------------------------- */
+const HEADLESS = (typeof document === 'undefined');
+if(HEADLESS){ module.exports = { CFG, RUN, newRun, stepGame }; }
+
+/* ======================= DOM / RENDER / INPUT (browser) =================== */
+if(!HEADLESS){
+(function(){
+  const cv=document.getElementById('game'), ctx=cv.getContext('2d');
+  /* SUPERSAMPLED BACKING STORE (2026-09-25): backed at SS x the game's own size and the
+     context scaled by SS, so every existing draw call still works in game units while
+     fillText gets SS times the pixels. SS is an integer, so the pixel art still lands on
+     whole device pixels. fitCanvas only touches cv.style, so the CSS size is unchanged. */
+  const SS=3;
+  cv.width=(RUN.w)*SS; cv.height=(RUN.h)*SS;  ctx.setTransform(SS,0,0,SS,0,0); ctx.imageSmoothingEnabled=false; ctx.imageSmoothingEnabled=false;
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Hero art — Bot 106 (Arweave #106, background keyed out). Falls back to the pixel ship if it can't load.
+  const heroImg=new Image(); let heroReady=false, heroRed=null;
+  heroImg.onload=function(){ heroReady=true;
+    try{ const oc=document.createElement('canvas'); oc.width=heroImg.width; oc.height=heroImg.height;
+      const octx=oc.getContext('2d'); octx.imageSmoothingEnabled=false; octx.drawImage(heroImg,0,0);
+      octx.globalCompositeOperation='source-atop'; octx.fillStyle='rgba(255,40,44,0.62)'; octx.fillRect(0,0,oc.width,oc.height);
+      heroRed=oc; }catch(e){} };
+  heroImg.src='assets/hero/bot-106.png';
+  const HERO_DW=24, HERO_DH=24;
+  /* EVERY run the page builds is dealt from today's seed (the daily-seed layer, fb-seed, is in <head>
+       so FB_SEED exists before this line runs). A bare newRun() — the old restart() and the run built
+       at load — carried on the previous run's stream: the free player never got today's challenge. */
+  function freshRun(){ try{ if(window.FB_SEED) window.FB_SEED.reseed(); }catch(e){} return newRun(); }
+  let s=freshRun(), active=true, prevPhase='play';
+
+  function fitCanvas(){ const box=(function(){ /* CONTENT box, not the border box: getBoundingClientRect
+      includes the host's padding (the shared device layer puts 12px on .surface),
+      so fitting to it asks for ~24px more than exists — then `max-height:100%`
+      clamps one axis, the other keeps the oversized value, and the canvas is
+      STRETCHED. Measured across the roster at 1400x820 it put every game between
+      2.9% and 5.4% off its own aspect ratio, which is every sprite subtly
+      squashed, on every game, all the time. */
+      const host=cv.parentElement; if(!host) return {width:0,height:0};
+      const cs=getComputedStyle(host);
+      const px=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+      const py=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+      return { width:Math.max(0,host.clientWidth-px), height:Math.max(0,host.clientHeight-py) }; })();
+    const ar=RUN.w/RUN.h; let w=box.width, h=w/ar; if(h>box.height){ h=box.height; w=h*ar; }
+    cv.style.width=Math.max(80,Math.floor(w))+'px'; cv.style.height=Math.max(44,Math.floor(h))+'px'; }
+  addEventListener('resize',fitCanvas); fitCanvas(); setTimeout(fitCanvas,120);
+
+  // ---- audio (WebAudio blips) ----
+  let ac=null; function tone(f,d,type,vol){ if(reduce)return; try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(),g=ac.createGain(); o.type=type||'square'; o.connect(g); g.connect(ac.destination);
+    o.frequency.value=f; g.gain.value=(vol||0.04); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+d); o.stop(ac.currentTime+d+0.02);}catch(e){} }
+  function chord(freqs,d){ freqs.forEach((f,i)=>setTimeout(()=>tone(f,d,'triangle',0.05), i*70)); }
+  function sfx(ev){
+    if(ev.shot) tone(880,0.05,'square',0.03);
+    if(ev.kill==='TICK') tone(320,0.07);
+    if(ev.kill==='DOME') tone(240,0.08);
+    if(ev.kill==='BOSS') tone(150,0.14,'sawtooth',0.05);
+    if(ev.bossHit) tone(500,0.05,'square',0.04);
+    if(ev.beamOn) tone(90,0.5,'sawtooth',0.05);
+    if(ev.capture) chord([500,400,300,200],0.14);
+    if(ev.dual) chord([392,494,587],0.12);
+    if(ev.extra) chord([523,659,784],0.12);
+    if(ev.perfect) chord([523,587,659,784,880],0.16);
+    if(ev.playerDie) tone(120,0.3,'sawtooth',0.06);
+  }
+
+  // ---- overlays ----
+  const rulesO=document.getElementById('rulesOverlay'), overO=document.getElementById('overOverlay'),
+        paidO=document.getElementById('paidOverlay'), infoBtn=document.getElementById('infoBtn');
+  function openRules(){ rulesO.classList.add('show'); const b=document.getElementById('rulesClose'); if(b)b.focus(); }
+  function closeRules(){ rulesO.classList.remove('show'); infoBtn.focus(); }
+  infoBtn.onclick=openRules; document.getElementById('rulesClose').onclick=closeRules;
+  rulesO.addEventListener('click',e=>{ if(e.target===rulesO) closeRules(); });
+  function restart(){ s=freshRun(); active=true; prevPhase='play'; overO.classList.remove('show'); paidO.classList.remove('show'); }
+  document.getElementById('restartBtn').onclick=restart;
+  function pad(n,w){ return String(n).padStart(w,'0'); }
+  function mmss(ms){ const t=Math.floor(ms/1000); return Math.floor(t/60)+':'+pad(t%60,2); }
+  function showOver(){ document.getElementById('oScore').textContent=String(s.score);
+    document.getElementById('oTime').textContent='Bay '+s.bay+' · '+s.kills+' kills';
+    overO.classList.add('show'); document.getElementById('retryBtn').focus(); }
+  document.getElementById('retryBtn').onclick=restart;
+
+  // ---- HUD ----
+  const elScore=document.getElementById('score'), elStat1=document.getElementById('stat1'), elLives=document.getElementById('lives');
+  let livesShown=-1;
+  function syncHUD(){ elScore.textContent=pad(s.score,6); elStat1.textContent=String(s.bay).padStart(2,'0');
+    if(s.lives!==livesShown){ livesShown=s.lives; elLives.innerHTML='';
+      for(let i=0;i<Math.min(s.lives,8);i++){ const d=document.createElement('span'); d.className='life'; elLives.appendChild(d);} } }
+
+  // ================= RENDER =================
+  const C={ tick1:'#ffd23f', tick2:'#ff7ab6', dome:'#57e0d8', domeDk:'#2aa8a0',
+            boss1:'#5fe08a', boss2:'#ff5cc8', hero:'#7fd7ff', heroDk:'#2b7fd6',
+            red:'#ff5a52', beam:'#a9e8ff', bullet:'#ffe08a' };
+  function px(x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(Math.round(x),Math.round(y),w,h); }
+  function drawShip(x,y,c,cdk,sc){ sc=sc||1; x=Math.round(x); y=Math.round(y);
+    if(heroReady){ const img=(c===C.red && heroRed)?heroRed:heroImg;
+      const dw=Math.round(HERO_DW*sc), dh=Math.round(HERO_DH*sc);
+      ctx.drawImage(img, x-Math.round(dw/2), y-Math.round(dh/2)-1, dw, dh); return; }
+    // fallback — Bot 106 fighter (pixel) if the PNG can't load.
+    px(x-1,y-8,3,4,c); px(x-1,y-8,3,1,'#fff');                 // nose
+    px(x-4,y-4,9,6,c);                                          // hull
+    px(x-1,y-3,3,3,cdk);                                        // cockpit
+    px(x-7,y-1,3,4,c); px(x+5,y-1,3,4,c);                       // wings
+    px(x-7,y+2,2,2,cdk); px(x+6,y+2,2,2,cdk);                   // wingtips
+    px(x-2,y+3,4,2,'#ffb84d');                                  // thruster
+  }
+  const OUT='#0b0713';   // shared dark outline — every FinnBot gets a crisp edge
+  // TICK — small gold drone with a pink screen-face and flapping wings.
+  function drawTick(e){ const x=Math.round(e.x), y=Math.round(e.y), fr=Math.floor(s.tMs/130)%2, wy=y-1+(fr?1:-1);
+    px(x-8,wy,3,2,OUT); px(x-7,wy,2,2,C.tick2); px(x+6,wy,3,2,OUT); px(x+6,wy,2,2,C.tick2);   // wings
+    px(x-5,y-4,11,10,OUT);                 // outline
+    px(x-4,y-3,9,8,C.tick1);               // base
+    px(x-4,y-3,9,1,'#ffe98a');             // top highlight
+    px(x-4,y+4,9,1,'#d98a2e');             // bottom shadow
+    px(x-3,y-1,7,4,'#2a0f1e');             // screen
+    px(x-2,y,1,2,C.tick2); px(x+2,y,1,2,C.tick2); px(x-1,y+2,3,1,C.tick2);   // eyes + mouth
+    px(x-3,y+5,1,1,OUT); px(x+2,y+5,1,1,OUT); }                              // feet
+  // DOME — teal escort with wide flapping wings and a gold screen-face.
+  function drawDome(e){ const x=Math.round(e.x), y=Math.round(e.y), fr=Math.floor(s.tMs/120)%2, wy=y+(fr?1:-1);
+    px(x-9,wy,4,3,OUT); px(x-9,wy,4,1,'#b8fff7'); px(x-8,wy+1,3,2,C.dome);   // left wing
+    px(x+6,wy,4,3,OUT); px(x+6,wy,4,1,'#b8fff7'); px(x+6,wy+1,3,2,C.dome);   // right wing
+    px(x-5,y-5,11,11,OUT);                 // outline
+    px(x-4,y-4,9,9,C.dome);                // base
+    px(x-4,y-4,9,2,'#b8fff7');             // domed highlight
+    px(x-4,y+4,9,1,C.domeDk);              // shadow
+    px(x-3,y-1,7,4,'#07242a');             // screen
+    px(x-2,y,1,2,'#ffe08a'); px(x+2,y,1,2,'#ffe08a'); px(x-1,y+2,3,1,'#ffe08a');
+    px(x-2,y+5,1,1,OUT); px(x+2,y+5,1,1,OUT); }
+  // BOSS — big screen-bot with antennae + shoulder pods; palette-swaps on hit 1.
+  function drawBoss(e){ const x=Math.round(e.x), y=Math.round(e.y), hit=e.colorHit;
+    const base=hit?C.boss2:C.boss1, hi=hit?'#ffc0ec':'#b6ffcf', sh=hit?'#a02a7a':'#2a8a52', eye=hit?'#ffd0f0':'#c9ffe0';
+    px(x-6,y-11,1,4,OUT); px(x+5,y-11,1,4,OUT); px(x-7,y-12,3,2,base); px(x+4,y-12,3,2,base);   // antennae
+    px(x-10,y-8,21,17,OUT);                // outline
+    px(x-9,y-7,19,15,base);                // base
+    px(x-9,y-7,19,2,hi);                   // top highlight
+    px(x-9,y+6,19,2,sh);                   // bottom shadow
+    px(x-11,y-2,2,6,OUT); px(x-10,y-1,1,4,sh); px(x+9,y-2,2,6,OUT); px(x+9,y-1,1,4,sh);         // shoulder pods
+    px(x-7,y-5,15,8,'#07130b');            // screen
+    px(x-4,y-3,3,3,eye); px(x+1,y-3,3,3,eye); px(x-3,y+1,6,1,eye);   // eyes + mouth
+    if(e.captive) drawCaptive(x, y+14);
+  }
+  function drawCaptive(x,y){ drawShip(x,y,C.red,'#a02020',0.9); }
+  function drawEnemy(e){ if(e.st==='dead'||e.st==='wait') return;
+    if(e.type==='TICK') drawTick(e); else if(e.type==='DOME') drawDome(e); else drawBoss(e); }
+  function drawBeam(){ if(!s.beam || !s.beam.boss || s.beam.boss.st==='dead') return; const e=s.beam.boss, bx=Math.round(e.x), by=Math.round(e.y+6);
+    const half=26, railW=half, topW=4, pulse=0.35+0.25*Math.sin(s.tMs*0.02);
+    ctx.save(); ctx.globalAlpha=pulse; ctx.fillStyle=C.beam;
+    ctx.beginPath(); ctx.moveTo(bx-topW,by); ctx.lineTo(bx+topW,by); ctx.lineTo(bx+railW,RAIL_Y); ctx.lineTo(bx-railW,RAIL_Y); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=pulse*0.6; for(let r=-2;r<=2;r++){ ctx.fillRect(bx+r*8-0.5, by, 1, RAIL_Y-by); }
+    ctx.restore(); }
+  function draw(){
+    // deep-space gradient + a faint nebula band drifting behind the swarm
+    const bg=ctx.createLinearGradient(0,0,0,RUN.h);
+    bg.addColorStop(0,'#0a0820'); bg.addColorStop(0.5,'#05060f'); bg.addColorStop(1,'#0b0518');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,RUN.w,RUN.h);
+    const ny=((s.tMs*0.006)%(RUN.h+120))-60;
+    const neb=ctx.createRadialGradient(RUN.w*0.5,ny,4, RUN.w*0.5,ny,90);
+    neb.addColorStop(0,'rgba(90,60,150,0.18)'); neb.addColorStop(1,'rgba(90,60,150,0)');
+    ctx.fillStyle=neb; ctx.fillRect(0,0,RUN.w,RUN.h);
+    // starfield (twinkle on the fastest layer)
+    for(const st of s.stars){ let c= st.sp>0.4?'#ffffff': st.sp>0.28?'#9fb4d6':'#5a6a8c';
+      if(st.sp>0.4 && (Math.floor(s.tMs/220)+((st.x|0)))%5===0) c='#7fd7ff';
+      ctx.fillStyle=c; ctx.fillRect(Math.round(st.x),Math.round(st.y),1,1); }
+    // arcade HUD strip
+    ctx.fillStyle='#7fd7ff'; ctx.font='7px "Jersey 15",monospace'; ctx.textAlign='left';
+    ctx.fillText('1UP', 4, 8); ctx.fillStyle='#fff'; ctx.fillText(pad(s.score,6), 4, 16);
+    ctx.fillStyle='#ff5cc8'; ctx.textAlign='center'; ctx.fillText('HI '+pad(Math.max(s.hi,s.score),6), CX, 8);
+    ctx.textAlign='left';
+    drawBeam();
+    s.enemies.forEach(drawEnemy);
+    for(const r of s.rescues) drawShip(r.x,r.y,C.red,'#a02020');
+    ctx.fillStyle=C.bullet; for(const b of s.ebullets) ctx.fillRect(Math.round(b.x-1),Math.round(b.y-1),3,3);
+    ctx.fillStyle=C.hero; for(const sh of s.shots) ctx.fillRect(Math.round(sh.x-1),Math.round(sh.y-4),2,7);
+    // player
+    const P=s.player;
+    if(P.alive && !P.dead){ const blink = P.invuln>0 && (Math.floor(s.tMs/90)%2===0);
+      if(!blink){ if(P.dual){ drawShip(P.x-11,RAIL_Y,C.hero,C.heroDk,0.9); drawShip(P.x+11,RAIL_Y,C.hero,C.heroDk,0.9); } else drawShip(P.x,RAIL_Y,C.hero,C.heroDk); } }
+    // explosions
+    for(const p of s.parts){ const k=p.t/p.life, rad=1+k*7; ctx.fillStyle= k<0.5?'#fff': k<0.8?'#ffb84d':'#ff5a52';
+      const n=8; for(let i=0;i<n;i++){ const a=i/n*6.28; ctx.fillRect(Math.round(p.x+Math.cos(a)*rad), Math.round(p.y+Math.sin(a)*rad), 2,2); } }
+    // BAY / message banner
+    if(s.msgT>0 && s.msg){ ctx.fillStyle= s.msg==='106 CAPTURED'?'#ff5a52' : s.msg==='PERFECT'?'#ffd23f':'#7fd7ff';
+      ctx.font='16px "Jersey 15",monospace'; ctx.textAlign='center'; ctx.fillText(s.msg, CX, RUN.h*0.42); ctx.textAlign='left'; }
+    ctx.textAlign='left';
+  }
+
+  // ================= INPUT =================
+  let leftHeld=false, rightHeld=false, fireHeld=false, dragging=false;
+  function apply(){ if(!active){ s.inDX=0; s.inFire=false; return; }
+    s.inDX = (leftHeld?-1:0) + (rightHeld?1:0); s.inFire = fireHeld; }
+  // keyboard
+  addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeRules(); return; } if(e.key==='r'||e.key==='R'){ restart(); return; }
+    if(!active) return;
+    if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){ leftHeld=true; e.preventDefault(); }
+    else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){ rightHeld=true; e.preventDefault(); }
+    else if(e.key===' '||e.key==='z'||e.key==='Z'){ fireHeld=true; e.preventDefault(); } });
+  addEventListener('keyup',e=>{ if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') leftHeld=false;
+    else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') rightHeld=false;
+    else if(e.key===' '||e.key==='z'||e.key==='Z') fireHeld=false; });
+  // d-pad (L / R move, GO fire) — up/down unused on the rail
+  function bindHold(id,set){ const el=document.getElementById(id); if(!el)return;
+    const on=e=>{e.preventDefault(); el.classList.add('on'); set(true);}, off=e=>{e.preventDefault(); el.classList.remove('on'); set(false);};
+    el.addEventListener('pointerdown',on); el.addEventListener('pointerup',off); el.addEventListener('pointerleave',off); el.addEventListener('pointercancel',off); }
+  bindHold('padL', v=>leftHeld=v); bindHold('padR', v=>rightHeld=v); bindHold('padFire', v=>fireHeld=v);
+  // canvas: DRAG on the rail to set X, TAP to fire (touch-first)
+  function toGameX(clientX){ const r=cv.getBoundingClientRect(); return clamp((clientX-r.left)/r.width*RUN.w, 12, RUN.w-12); }
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); if(!active) return; dragging=true; s.player.x=toGameX(e.clientX); fireHeld=true; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
+  cv.addEventListener('pointermove', e=>{ if(dragging){ s.player.x=toGameX(e.clientX); } });
+  function endDrag(){ dragging=false; fireHeld=false; }
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag); cv.addEventListener('pointerleave', ()=>{ if(dragging) dragging=false; });
+
+  // ================= ENGINE CONTRACT =================
+  function startRun(){ s=freshRun(); active=true; prevPhase='play'; rulesO.classList.remove('show'); overO.classList.remove('show'); paidO.classList.remove('show'); }
+  function idleForPaid(){ s=freshRun(); active=false; }
+  function resumeFree(){ s=freshRun(); active=true; prevPhase='play'; overO.classList.remove('show'); }
+  window.WING106Engine = { start:startRun, idle:idleForPaid, resumeFree:resumeFree, state:()=>s };
+  function endRun(){ active=false; syncHUD();
+    const res={ score:s.score, bay:s.bay, kills:s.kills, timeMs:s.tMs };
+    if(window.WING106Paid && WING106Paid.onRunEnd && WING106Paid.onRunEnd(res)) return;
+    showOver(); }
+
+  // ================= LOOP =================
+  let last=performance.now(), acc=0; const TICK=1000/120;
+  function frame(now){ let dt=now-last; last=now; if(dt>200)dt=200;
+    if(active && s.phase==='play' && !rulesO.classList.contains('show')){
+      acc+=dt; let guard=0;
+      while(acc>=TICK && s.phase==='play' && guard<16){ acc-=TICK; apply(); const ev=stepGame(s,TICK); sfx(ev); guard++; }
+    } else acc=0;
+    if(s.phase!=='play' && prevPhase==='play') endRun();
+    prevPhase=s.phase; syncHUD(); draw(); requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // First load: open How-To as an intro (skip Phantom redirect returns).
+  try{ var _p=new URLSearchParams(location.search); if(!_p.get('phantom_action') && _p.get('src')!=='browse') openRules(); }catch(e){}
+})();
+}
+
+</script>
+
+<!-- Shared wallet libs (loaded once; the wallet LOGIC stays dead until Paid is chosen — mirrors live Mr Bot / Rush). -->
+<script src="phantom-deeplink-libs.min.js?v=20260906a"></script>
+<script src="phantom-mobile.js?v=20260906a"></script>
+<script src="solana-web3.iife.min.js?v=20260906a"></script>
+<script>
+  // NOTE: the score-memo SHAPE (buildScoreMemo + the result fields it carries: res.score/res.bay/res.kills/res.timeMs) is
+  // per-game — change those to your run stats. Everything else in this layer stays byte-identical.
+/* ============================================================================
+ * Bot Smash — Paid layer. WING sink + fun leaderboard.
+ * The wallet MECHANICS below (getProvider, fetchOilBalance, buildTransferIx,
+ * buildMemoIx, confirmSignature, sendPayment, onConnect, resume) are LIFTED
+ * VERBATIM from the live Mr Bot index.html (itself lifted from Bot Merge Rush)
+ * — only CFG values, the WING memo tag / pending key / sign marker, and the
+ * score-memo shape change. The UI glue is Bot Smash's (single-run action game).
+ * Bot Smash is real-time and UNREPLAYABLE. The leaderboard is a FUN RANKING +
+ * an OIL SINK. It is NOT verified / provably fair. Records, does not verify.
+ * ==========================================================================*/
+(function(){
+  'use strict';
+  var mode = 'free';
+  function $(id){ return document.getElementById(id); }
+
+  function lockModeToggle(lock){
+    $('modeFree').disabled = !!lock;
+    $('modePaid').disabled = !!lock;
+  }
+
+  var Paid = (function(){
+    var TEST_MODE = false;     // <-- ships TEST for Localnet proof; flip to false ONLY with Founder confirm in this run's output
+    var CFG = TEST_MODE ? {
+      RPC: 'http://127.0.0.1:8899',
+      TOKEN_PROGRAM: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+      MEMO_PROGRAM: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+      OIL_MINT: '9B5ZQifZQc3ykhnZhA9m8DFoNY5uaTwqHGNZMah6eK8Y',
+      TREASURY: '8tzZzNiGkE2kYXhUSauNEUyVHiaWBt5pBagg7CHKPNBM',
+      TREASURY_TOKEN_ACCOUNT: '3s1SQ7JZmti4PfhVsb7LCTn9q5ZhRBMaH6v2vsrVZeg6',
+      ENTRY_FEE: 25, POST_FEE: 1, DECIMALS: 2
+    } : {
+      RPC: 'https://finnbots-rpc.mart-kin1000.workers.dev',
+      TOKEN_PROGRAM: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+      MEMO_PROGRAM: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+      OIL_MINT: 'HrcfXJcFdMoLfbkN5qCTSFrLsAgJNHitmwKc5AyS7xzf',
+      TREASURY: '75WPN3kwYUT5kdPU7V3Fp3LhnxmPC38bsgBCasRQdXMR',
+      TREASURY_TOKEN_ACCOUNT: '2ZBNMLZFfHCuZm9Lfc3b7ut296tRwGtapuXad7zSm1ED',
+      ENTRY_FEE: 25, POST_FEE: 1, DECIMALS: 2
+    };
+    var MEMO_TAG = 'WING';
+    var wallet = { pubkey:null, oil:0 };
+    var inited=false, busy=false, entrySig=null, pendingResult=null;
+    var connectBtn, walletStatus;
+
+    function $(id){ return document.getElementById(id); }
+    // ---- verbatim from Rush/Mr Bot ----
+    function getProvider(){ if(window.phantom&&window.phantom.solana&&window.phantom.solana.isPhantom) return window.phantom.solana; if(window.solana&&window.solana.isPhantom) return window.solana; return null; }
+    function shortAddr(a){ return a.slice(0,4)+'\u2026'+a.slice(-4); }
+    function setStatus(html,cls){ walletStatus.classList.remove('hidden'); walletStatus.className='wallet-status'+(cls?' '+cls:''); walletStatus.innerHTML=html; }
+    function canPlay(){ return !!wallet.pubkey && wallet.oil>=CFG.ENTRY_FEE; }
+    function delay(ms){ return new Promise(function(res){ setTimeout(res,ms); }); }
+
+    // ---- balance (verbatim from Rush/Mr Bot) -------------------------------
+    async function fetchOilBalance(owner){
+      try{ var body=JSON.stringify({ jsonrpc:'2.0', id:'oilbal', method:'getTokenAccountsByOwner', params:[ owner, { mint:CFG.OIL_MINT }, { encoding:'jsonParsed' } ] });
+        var r=await fetch(CFG.RPC,{ method:'POST', headers:{'Content-Type':'application/json'}, body:body }); if(!r.ok) return 0;
+        var j=await r.json(); var accts=j&&j.result&&j.result.value; if(!accts||!accts.length) return 0;
+        var base=0; accts.forEach(function(acc){ try{ base+=Number(acc.account.data.parsed.info.tokenAmount.amount); }catch(e){} });
+        return base/Math.pow(10,CFG.DECIMALS);
+      }catch(e){ return 0; }
+    }
+    async function checkBalance(owner){
+      wallet.oil=await fetchOilBalance(owner);
+      var pfx=TEST_MODE?'\ud83e\uddea TEST MODE \u2014 ':'';
+      if(wallet.oil>=CFG.ENTRY_FEE){ setStatus('Connected as <span class="addr">'+shortAddr(owner)+'</span><br/>'+pfx+'You hold <b>'+wallet.oil.toFixed(2)+'</b> $OIL \u2014 tap Play to enter (25 OIL).', 'ok'); }
+      else { setStatus('Connected as <span class="addr">'+shortAddr(owner)+'</span><br/>'+pfx+'This wallet holds <b>'+wallet.oil.toFixed(2)+'</b> $OIL \u2014 need at least '+CFG.ENTRY_FEE+' to play.', 'warn'); }
+      relabelStart();
+    }
+
+    // ---- payment (one signed SPL transfer + memo — verbatim from Rush/Mr Bot) ----
+    var PENDING_KEY='wing_pending_action';
+    function savePending(a){ try{ localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }catch(e){} }
+    function loadPending(){ try{ var v=localStorage.getItem(PENDING_KEY); return v?JSON.parse(v):null; }catch(e){ return null; } }
+    function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} }
+    function PayError(msg){ this.userMessage=msg; }
+    function u64LE(amount){ var out=new Uint8Array(8); var big=BigInt(Math.round(amount)); for(var i=0;i<8;i++){ out[i]=Number(big&0xffn); big>>=8n; } return out; }
+    function buildTransferIx(src,dst,owner,amt){ var data=new Uint8Array(9); data[0]=3; data.set(u64LE(amt),1);
+      return new solanaWeb3.TransactionInstruction({ programId:new solanaWeb3.PublicKey(CFG.TOKEN_PROGRAM),
+        keys:[{pubkey:src,isSigner:false,isWritable:true},{pubkey:dst,isSigner:false,isWritable:true},{pubkey:owner,isSigner:true,isWritable:false}], data:data }); }
+    function buildMemoIx(owner,text){ return new solanaWeb3.TransactionInstruction({ programId:new solanaWeb3.PublicKey(CFG.MEMO_PROGRAM), keys:[{pubkey:owner,isSigner:true,isWritable:false}], data:new TextEncoder().encode(text) }); }
+    async function confirmSignature(connection,signature,timeoutMs){ var start=Date.now();
+      while(Date.now()-start<timeoutMs){ var res=await connection.getSignatureStatuses([signature]); var st=res&&res.value&&res.value[0];
+        if(st){ if(st.err) throw new PayError('The transaction failed on-chain \u2014 no charge was made. Please try again.'); if(st.confirmationStatus==='confirmed'||st.confirmationStatus==='finalized') return true; } await delay(1500); } return false; }
+
+    async function sendPayment(amountOil, memoText, action){
+      var provider=getProvider();
+      var useMobile=!provider && window.PhantomMobile && PhantomMobile.isMobile() && PhantomMobile.hasSession();
+      if(!provider && !useMobile) throw new PayError('Phantom isn\u2019t reachable here \u2014 open this page in your browser, or tap Connect again on mobile.');
+      var ownerPk=new solanaWeb3.PublicKey(wallet.pubkey);
+      var connection=new solanaWeb3.Connection(CFG.RPC,'confirmed');
+      var tokAccts=await connection.getTokenAccountsByOwner(ownerPk,{ mint:new solanaWeb3.PublicKey(CFG.OIL_MINT) });
+      if(!tokAccts.value.length) throw new PayError('No $OIL account found in this wallet.');
+      var sourcePubkey=tokAccts.value[0].pubkey;
+      var balInfo=await connection.getTokenAccountBalance(sourcePubkey);
+      var needBase=Math.round(amountOil*Math.pow(10,CFG.DECIMALS));
+      if(Number(balInfo.value.amount)<needBase) throw new PayError('Not enough liquid $OIL \u2014 need '+amountOil+'.');
+      var destPubkey=new solanaWeb3.PublicKey(CFG.TREASURY_TOKEN_ACCOUNT);
+      var tx=new solanaWeb3.Transaction();
+      tx.add(buildTransferIx(sourcePubkey,destPubkey,ownerPk,needBase), buildMemoIx(ownerPk,memoText));
+      tx.feePayer=ownerPk; var latest=await connection.getLatestBlockhash(); tx.recentBlockhash=latest.blockhash;
+      if(useMobile){
+        var pend={ action:action, owner:wallet.pubkey, marker:'wing_sign' };
+        if(action==='score' && pendingResult){ pend.entrySig=entrySig; pend.score=pendingResult.score; pend.bay=pendingResult.bay; pend.kills=pendingResult.kills; pend.timeMs=pendingResult.timeMs; }
+        savePending(pend); setStatus('Opening Phantom to approve\u2026');
+        var unsigned=tx.serialize({ requireAllSignatures:false, verifySignatures:false });
+        PhantomMobile.signTransaction(unsigned, window.location.origin+window.location.pathname, 'wing_sign'); return null;
+      }
+      var signed=await provider.signTransaction(tx); setStatus('Sending payment\u2026');
+      var rawSig=await connection.sendRawTransaction(signed.serialize(),{ skipPreflight:false }); setStatus('Payment sent \u2014 waiting for confirmation\u2026');
+      var ok=await confirmSignature(connection,rawSig,30000); if(!ok) throw new PayError('Confirmation is taking longer than expected. Signature: '+rawSig+'. Do not pay again \u2014 check it first.');
+      return rawSig; // base58 on-chain signature
+    }
+
+    // ---- score memo (WING — no seed, no move-log, no replay; records NOT verified) ----
+    function buildScoreMemo(res){ return MEMO_TAG+'|score|sig='+String(entrySig).slice(0,32)+'|score='+res.score+'|bay='+res.bay+'|kills='+res.kills+'|time='+Math.round(res.timeMs); }
+
+    // ---- flow glue (Bot Smash: single-run action game) ---------------------
+    function relabelStart(){
+      var b=$('paidPlayBtn'); if(!b) return;
+      b.textContent = canPlay() ? 'Play (25 OIL)' : (wallet.pubkey ? 'Need 25 OIL to play' : 'Connect wallet first');
+    }
+    function relabelStartBusy(t){ var b=$('paidPlayBtn'); if(b) b.textContent=t; }
+
+    function onEntryConfirmed(sig){ entrySig=sig; busy=false; lockModeToggle(true);
+      setStatus('Entry paid \u2014 good luck! Post your score after the run.', 'ok');
+      window.WING106Engine.start(); }
+
+    // Called by the engine at game over. Returns true if this was a paid run (engine then skips its free overlay).
+    function onRunEnd(res){
+      if(mode!=='paid' || !entrySig) return false;
+      pendingResult={ score:res.score, bay:res.bay, kills:res.kills, timeMs:res.timeMs };
+      showRunOver(pendingResult); return true;
+    }
+    function fmtTime(ms){ var s=Math.round(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+    function showRunOver(res){
+      setStatus('Run over \u2014 post your score below to record it (1 OIL).', 'ok'); relabelStart();
+      var ov=$('paidOverlay'); ov.classList.add('show');
+      ov.innerHTML='<div class="card win"><h2>SHIFT OVER</h2><p>Score <b>'+res.score+'</b> \u00b7 Bay <b>'+res.bay+'</b> \u00b7 Kills <b>'+res.kills+'</b> \u00b7 Time <b>'+fmtTime(res.timeMs)+'</b><br/>Post it to the leaderboard (1 OIL) \u2014 a fun ranking, not verified.</p>'+
+        '<button class="btn" id="postBtn">Post score (1 OIL)</button></div>';
+      $('postBtn').addEventListener('click', onPost, { once:false });
+    }
+    async function onPost(){
+      if(busy || !pendingResult) return;
+      busy=true; var pb=$('postBtn'); if(pb){ pb.disabled=true; pb.textContent='Posting\u2026'; }
+      var memo=buildScoreMemo(pendingResult);
+      try{ var sig=await sendPayment(CFG.POST_FEE, memo, 'score'); if(sig===null) return; showPosted(pendingResult); }
+      catch(e){ setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey||'')+'</span><br/>'+((e instanceof PayError)?e.userMessage:'Your score post didn\u2019t confirm. Nothing recorded yet \u2014 tap to retry.'), 'warn');
+        if(pb){ pb.disabled=false; pb.textContent='Retry post'; } busy=false; }
+    }
+    function showPosted(res){ pendingResult=null; entrySig=null; busy=false; lockModeToggle(false);
+      $('posted-text').innerHTML='Score <b>'+res.score+'</b> \u00b7 Bay <b>'+res.bay+'</b> \u00b7 Kills <b>'+res.kills+'</b> \u00b7 Time <b>'+fmtTime(res.timeMs)+'</b>. It\u2019ll appear on the leaderboard once recorded on-chain \u2014 a fun ranking, not verified.';
+      $('paidOverlay').classList.remove('show');
+      $('postedSheet').classList.add('show');
+    }
+
+    // Paid start card (idle state before entry) — mirrors Mr Bot's resetToPlay.
+    function showPaidStart(){
+      entrySig=null; pendingResult=null; busy=false; lockModeToggle(false);
+      var ov=$('paidOverlay'); ov.classList.add('show');
+      ov.innerHTML='<div class="card"><h2>WING 106 \u2014 PAID</h2><p>25 OIL entry \u00b7 one run (3 lives, no continues) \u00b7 fun leaderboard, not verified. Hold the bay against the swarm, dodge the tractor beam, fly a dual wing \u2014 holders \u00d71.5.</p>'+
+        '<button class="btn" id="paidPlayBtn">Play (25 OIL)</button></div>';
+      $('paidPlayBtn').addEventListener('click', function(){ handleStart(); });
+      relabelStart();
+      if(wallet.pubkey) checkBalance(wallet.pubkey);
+    }
+
+    // ---- connect (desktop + mobile — verbatim from Rush/Mr Bot) ------------
+    async function onConnect(){
+      var provider=getProvider();
+      if(!provider){
+        if(window.PhantomMobile && PhantomMobile.isMobile()){
+          var inBrowse=new URLSearchParams(window.location.search).get('src')==='browse';
+          if(!inBrowse){ connectBtn.disabled=true; connectBtn.textContent='Opening in Phantom\u2026'; setStatus('Opening this game inside Phantom\u2019s browser.');
+            var target=window.location.origin+window.location.pathname+'?src=browse';
+            window.location.href='https://phantom.app/ul/browse/'+encodeURIComponent(target)+'?ref='+encodeURIComponent(window.location.origin); return; }
+          connectBtn.disabled=true; connectBtn.textContent='Opening Phantom\u2026'; setStatus('Opening Phantom \u2014 approve, then you\u2019ll come back here.');
+          PhantomMobile.connect(window.location.origin+window.location.pathname); return;
+        }
+        setStatus('Phantom isn\u2019t reachable here. Open this page in a browser with the <a href="https://phantom.app" target="_blank" rel="noopener">Phantom</a> extension.', 'warn'); return;
+      }
+      connectBtn.disabled=true; connectBtn.textContent='Connecting\u2026';
+      try{ var resp=await provider.connect(); wallet.pubkey=resp.publicKey.toString(); connectBtn.textContent='Connected';
+        setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey)+'</span><br/>Checking your $OIL balance\u2026'); checkBalance(wallet.pubkey);
+      }catch(e){ connectBtn.disabled=false; connectBtn.textContent='Connect'; setStatus('Connection cancelled. Tap Connect to try again.', 'warn'); }
+    }
+
+    // ---- play (25 OIL entry) -----------------------------------------------
+    async function onPlay(){
+      if(busy || entrySig) return;
+      if(!canPlay()){ setStatus('Connect a wallet holding at least '+CFG.ENTRY_FEE+' $OIL to play.', 'warn'); return; }
+      busy=true; relabelStartBusy('Sending entry\u2026');
+      try{ var sig=await sendPayment(CFG.ENTRY_FEE, MEMO_TAG+'|entry', 'entry'); if(sig===null) return; onEntryConfirmed(sig); }
+      catch(e){ setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey||'')+'</span><br/>'+((e instanceof PayError)?e.userMessage:'Something went wrong sending the entry. No confirmed charge means nothing was taken.'), 'warn');
+        busy=false; relabelStart(); }
+    }
+
+    // handleStart is the entry gate reused by the Paid start card's Play button.
+    function handleStart(){
+      if(mode!=='paid') return false;      // Free: engine runs as normal
+      if(busy || entrySig) return true;    // in-flight or a paid run already armed: block
+      if(!wallet.pubkey){ setStatus('Connect a wallet with at least '+CFG.ENTRY_FEE+' $OIL, then tap Play.', 'warn'); return true; }
+      onPlay(); return true;
+    }
+
+    function onAgain(){ $('postedSheet').classList.remove('show'); window.WING106Engine.idle(); showPaidStart(); }
+
+    // ---- mobile redirect resume (verbatim from Rush/Mr Bot; carries waves/score/timeMs) --
+    async function resume(){
+      var actionParam=new URLSearchParams(window.location.search).get('phantom_action');
+      if(!actionParam){
+        if(!wallet.pubkey && window.PhantomMobile && PhantomMobile.hasSession()){ wallet.pubkey=PhantomMobile.getSessionPublicKey();
+          connectBtn.textContent='Connected'; connectBtn.disabled=true; setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey)+'</span><br/>Checking your $OIL balance\u2026'); checkBalance(wallet.pubkey); }
+        return;
+      }
+      connectBtn.disabled=true; connectBtn.textContent='Finishing\u2026'; setStatus('Almost there \u2014 finishing up with Phantom\u2026');
+      var pending=loadPending(); var marker=pending?pending.marker:'wing_sign';
+      var result=window.PhantomMobile?PhantomMobile.consumePendingRedirect(marker):null;
+      if(result&&result.type==='connect'){ wallet.pubkey=result.publicKey; connectBtn.textContent='Connected';
+        setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey)+'</span><br/>Checking your $OIL balance\u2026'); checkBalance(wallet.pubkey); return; }
+      if(result&&result.type==='signTransaction'&&pending){ connectBtn.textContent='Connected'; connectBtn.disabled=true; if(pending.owner) wallet.pubkey=pending.owner; clearPending();
+        try{ var connection=new solanaWeb3.Connection(CFG.RPC,'confirmed'); var rawSig=await connection.sendRawTransaction(result.txBytes,{ skipPreflight:false });
+          setStatus('Payment sent \u2014 waiting for confirmation\u2026'); var ok=await confirmSignature(connection,rawSig,30000);
+          if(!ok) throw new PayError('Confirmation slow. Signature: '+rawSig+'. Do not pay again \u2014 check it first.');
+          if(pending.action==='entry'){ onEntryConfirmed(rawSig); }
+          else if(pending.action==='score'){ pendingResult={ score:pending.score, bay:pending.bay, kills:pending.kills, timeMs:pending.timeMs }; showPosted(pendingResult); }
+          if(wallet.pubkey) checkBalance(wallet.pubkey);
+        }catch(e){ setStatus('Connected as <span class="addr">'+shortAddr(wallet.pubkey||'')+'</span><br/>'+((e instanceof PayError)?e.userMessage:'Something went wrong after returning from Phantom. Check your wallet activity before retrying.'), 'warn'); }
+        return;
+      }
+      connectBtn.disabled=false; connectBtn.textContent='Connect';
+      setStatus((result&&result.type==='error')?result.message:'The connection didn\u2019t complete \u2014 tap Connect to try again.', 'warn');
+    }
+
+    function init(){
+      if(inited) return; inited=true;
+      connectBtn=$('connectBtn'); walletStatus=$('walletStatus');
+      if(TEST_MODE){ $('testBanner').classList.remove('hidden'); }
+      connectBtn.addEventListener('click', onConnect);
+      $('againBtn').addEventListener('click', onAgain);
+    }
+
+    return { init:init, resume:resume, onRunEnd:onRunEnd, handleStart:handleStart,
+             showPaidStart:showPaidStart, hasSession:function(){ return window.PhantomMobile && PhantomMobile.hasSession(); } };
+  })();
+
+  window.WING106Paid = Paid;
+
+  // ===== Mode switching (kid-safety: Paid is a deliberate opt-in) ============
+  var facts=$('facts');
+  var confirmSheet=$('confirmSheet');
+  var FREE_FACTS='Free \u00b7 wallet-free \u00b7 pays nothing';
+  var PAID_FACTS='Paid \u00b7 25 OIL entry \u00b7 one run \u00b7 fun leaderboard (not verified) \u00b7 holders \u00d71.5';
+
+  function setMode(m){
+    mode=m;
+    var f=$('modeFree'), p=$('modePaid');
+    if(m==='free'){
+      document.body.classList.remove('mode-paid');
+      f.classList.add('active'); p.classList.remove('active');
+      if(facts) facts.textContent=FREE_FACTS;
+    } else {
+      document.body.classList.add('mode-paid');
+      p.classList.add('active'); f.classList.remove('active');
+      if(facts) facts.textContent=PAID_FACTS;
+    }
+  }
+
+  $('modeFree').addEventListener('click', function(){ if(mode==='free') return; setMode('free'); window.WING106Engine.resumeFree(); });
+  $('modePaid').addEventListener('click', function(){ if(mode==='paid') return; confirmSheet.classList.add('show'); });
+  $('confirmBack').addEventListener('click', function(){ confirmSheet.classList.remove('show'); });
+  $('confirmEnter').addEventListener('click', function(){ confirmSheet.classList.remove('show'); setMode('paid'); Paid.init(); window.WING106Engine.idle(); Paid.showPaidStart(); if(Paid.hasSession && Paid.hasSession()) Paid.resume(); });
+
+  // ===== On load: Free by default. The wallet layer is only touched when returning
+  // ===== from a Phantom redirect or already inside Phantom's browser (both of which
+  // ===== can ONLY occur after the user opted into Paid). =====================
+  (function boot(){
+    var params=new URLSearchParams(window.location.search);
+    if(params.get('phantom_action') || params.get('src')==='browse'){ setMode('paid'); Paid.init(); window.WING106Engine.idle(); Paid.showPaidStart(); Paid.resume(); }
+    else { setMode('free'); }
+  })();
+})();
+</script>
+<script id="fb-sticky">
+/* ==========================================================================
+   FinnBots STICKINESS LAYER — the reason a player takes one more run.
+   Founder rule, 2026-09-25: "provide a UI/UX that will support stickiness
+   with players."
+
+   SOURCE OF TRUTH. Injected by apply-device.js as <script id="fb-sticky">
+   just before </body>. It is deliberately tiny and entirely passive:
+
+     - it NEVER touches the engine, the wallet layer, the network or a wallet
+     - it reads the score the game ALREADY prints into #oScore
+     - it stores one number per game in localStorage, and nothing else
+
+   What it adds, and why each one earns its place:
+     1. A personal best you can always see.  A score with nothing to beat is a
+        number; a score next to your best is a challenge.
+     2. A run-over line that says exactly how close you came ("1,240 short" /
+        "NEW BEST +900").  The gap is what makes the next run feel winnable.
+     3. A session run counter, so a streak is visible while it is happening.
+     4. Enter / Space / Return restarts from the run-over card.  The single
+        biggest drop-off in an arcade loop is the pause between runs — the
+        fastest possible replay is the strongest retention feature there is.
+   ========================================================================== */
+(function(){
+  try{
+    var NS = 'fb:' + (location.hostname.split('.')[0] || 'game') + ':';
+    var $  = function(id){ return document.getElementById(id); };
+    var read = function(k,d){ try{ var v=localStorage.getItem(NS+k); return v==null?d:(JSON.parse(v)); }catch(e){ return d; } };
+    var save = function(k,v){ try{ localStorage.setItem(NS+k, JSON.stringify(v)); }catch(e){} };
+    var fmt  = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    var num  = function(t){ var n=parseInt(String(t||'').replace(/[^0-9]/g,''),10); return isFinite(n)?n:0; };
+
+    var best = num(read('best', 0)), runs = 0;
+
+    /* ---- 1. the chip, in the topbar beside the title ---- */
+    var chip = document.createElement('span');
+    chip.className = 'fb-best';
+    function paintChip(isNew){
+      chip.innerHTML = '<i>BEST</i> <b>' + fmt(best) + '</b>';
+      chip.classList.toggle('is-new', !!isNew);
+      chip.hidden = !best;
+    }
+    paintChip(false);
+    var title = document.querySelector('.topbar .title, .topbar h1, header .title');
+    if(title && title.parentNode) title.parentNode.insertBefore(chip, title.nextSibling);
+
+    /* ---- 2. the run-over line ---- */
+    var over = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
+    if(!over || !card || !scoreEl) return;       // not a chassis run-over card: do nothing
+    var line = document.createElement('p');
+    line.className = 'fb-runline';
+    var retry = $('retryBtn');
+    if(retry && retry.parentNode) retry.parentNode.insertBefore(line, retry);
+    else card.appendChild(line);
+
+    var shown = false;
+    function onShow(){
+      var score = num(scoreEl.textContent);
+      runs++;
+      var isNew = score > best, gap = best - score;
+      if(isNew){
+        var by = score - best;
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">NEW BEST · +' + fmt(by) + '</span>' +
+                         '<small>run ' + runs + ' this session</small>';
+      } else if(best > 0){
+        line.innerHTML = '<span class="gap">' + fmt(gap) + ' short of your best</span>' +
+                         '<small>best ' + fmt(best) + ' · run ' + runs + ' this session</small>';
+      } else {
+        best = score; save('best', best);
+        line.innerHTML = '<span class="go">First run banked</span>' +
+                         '<small>beat ' + fmt(best) + ' next time</small>';
+      }
+      paintChip(isNew);
+    }
+
+    new MutationObserver(function(){
+      var on = over.classList.contains('show');
+      if(on && !shown){ shown = true; onShow(); }
+      else if(!on){ shown = false; }
+    }).observe(over, { attributes:true, attributeFilter:['class'] });
+
+    /* ---- 3. one-key replay, and the focus trap it exposed ------------------
+       Closing a dialog returns focus to the button that opened it — correct
+       accessibility, and the chassis does it. But a focused <button> then eats
+       ENTER and SPACE, so mid-game those keys re-open HOW TO PLAY instead of
+       playing: Space IS the fire key in several games, and this layer had just
+       taught players to press Enter between runs, which made a latent bug easy
+       to hit (Founder, 2026-09-25, seen on a round clear).
+
+       So: Enter/Space replay when the run-over card is up; they are left alone
+       while ANY other dialog is open, because its buttons must still work; and
+       otherwise the focused control is blurred and the key swallowed, so game
+       keys can never operate the chrome. Capture phase, because this has to run
+       before the button's own activation. */
+    var anyDialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
+    addEventListener('keydown', function(e){
+      if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      if(over.classList.contains('show')){
+        e.preventDefault();
+        if(retry) retry.click();
+        return;
+      }
+      if(anyDialog()) return;                       // another dialog owns the keyboard
+      var a = document.activeElement;
+      if(a && a !== document.body && /^(BUTTON|A|SUMMARY)$/.test(a.tagName)){
+        a.blur();
+        e.preventDefault();
+      }
+    }, true);
+  }catch(e){ /* stickiness must never break a game */ }
+})();
+</script>
+<script id="fb-outro" data-fb-board="leaderboard_wing.csv">
+/* ==========================================================================
+   FinnBots OUTRO LAYER — the ending screen.
+   Founder, 2026-10-02, verbatim: "there need to be a cool ending screen to
+   games not just they end or game over".
+
+   SOURCE OF TRUTH. Injected by apply-outro.js as <script id="fb-outro">
+   just before </body>, which is AFTER the engine and after the stickiness and
+   seed layers, so everything it decorates already exists when it binds.
+
+   WHAT WAS WRONG. The chassis run-over card is a receipt: "RUN OVER", a score,
+   a time, a retry button — the same card whether the player cleared the final
+   round or walked into the first enemy. The number arrives instantly, which
+   makes it information rather than a reward, and it sits beside nothing, so a
+   great run and a terrible one feel identical. An arcade ending has four beats
+   and we shipped none of them.
+
+   THE FOUR BEATS, and why each one earns its place:
+
+     1. VERDICT — winning must not look like dying. A cleared game gets a
+        different kicker, a lit hero and a flourish; a loss gets a warm,
+        non-punitive close. Free players are children (Founder, 2026-09-30):
+        losing is never made to sting, and nothing here sells anything.
+
+     2. TALLY — the score COUNTS UP, and the per-game stats the card already
+        prints become itemised rows that ratchet in above it. The count-up is
+        the oldest reward animation in the arcade and the single biggest thing
+        this card was missing. It is always skippable with a tap or a key: a
+        ceremony you cannot cut short is a toll, not a reward.
+
+     3. RANK — where does this run actually stand? The board CSV the scanner
+        publishes is served from the same origin as the game, so the ending can
+        read it and say "that would place you 7th today", with a rank title
+        earned against the REAL distribution rather than hand-set thresholds
+        that would mean something different in every game. 25 OIL buys a
+        leaderboard spot; this is where the purchase is finally delivered. Free
+        players see the same thing for nothing — the paid layer's output
+        flowing back to them as content, per MONETISATION-BRIEF.md.
+
+     4. HOOK — the stickiness layer's "1,240 short of your best" line and its
+        one-key replay stay exactly where they are. This layer frames them.
+
+   HOW IT IS BUILT, and the traps that shaped it:
+
+     - ADDITIVE AND PASSIVE. It never touches the engine, the wallet layer, the
+       network beyond the one same-origin CSV, or a wallet. It reads the DOM the
+       game already wrote.
+     - IT NEVER RETYPES THE CARD'S OWN NUMBERS. #oScore keeps its final text,
+       because the stickiness layer, the score memo and two gates read it. We
+       hide the plain readout with a clip rect and draw our own beside it.
+     - IT FIRES ON A RUN END, NEVER ON A START SCREEN. Bot Pong and Bot Merge
+       reuse #overOverlay/#overCard as their START card, so "the overlay became
+       visible" is not "the run ended". The guard is structural, not a list of
+       game names: a card that holds a visible control whose id starts with
+       "start", or whose score element is hidden by attribute, is a start card
+       and is left alone. Those two games therefore get NO ending screen from
+       this layer, which verify-outro.js reports per game as a named gap rather
+       than passing in silence.
+     - VISIBILITY IS DECIDED WITHOUT LAYOUT. Games reveal the overlay three
+       different ways (.show added, .hidden removed, both), so the check is
+       mechanism-agnostic and layout-free, which also lets a gate drive it
+       headlessly.
+     - IT MUST NEVER BREAK A GAME. Everything is inside one try/catch, every
+       animation degrades to its final state under prefers-reduced-motion, and
+       a missing hero image, a missing board or a failed fetch each remove one
+       beat and leave the rest.
+   ========================================================================== */
+(function(){
+  try{
+    var $ = function(id){ return document.getElementById(id); };
+    var overlay = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
+    /* HARD dependencies. check-layers.js reads this guard to learn which ids
+       the layer cannot run without, and then checks them in the STATIC markup
+       of every game that carries the layer — so a game where this returns is a
+       FAILED gate, not a quiet no-op. [[installed-is-not-working]] */
+    if(!overlay || !card || !scoreEl) return;
+
+    var titleEl = $('overTitle');
+    var SCRIPT  = document.getElementById('fb-outro');
+    var BOARD   = (SCRIPT && SCRIPT.getAttribute('data-fb-board')) || '';
+    var reduced = false;
+    try{ reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){}
+
+    var fmt = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    var num = function(t){ var n = parseInt(String(t==null?'':t).replace(/[^0-9-]/g,''),10); return isFinite(n)?n:0; };
+    var has = function(el,c){ return !!(el && el.classList && el.classList.contains(c)); };
+    var attrHidden = function(el){
+      if(!el) return true;
+      if(el.hidden === true) return true;
+      if(el.getAttribute && el.getAttribute('hidden') !== null && el.getAttribute('hidden') !== undefined) return true;
+      return false;
+    };
+
+    /* ---- is the overlay on screen? ------------------------------------
+       Three conventions are in service (.show added, .hidden removed, both),
+       so decide by state rather than by mechanism, and never by layout: a
+       layout-based answer cannot be driven by a gate and is wrong anyway while
+       the overlay is mid-transition. */
+    function visible(el){
+      if(attrHidden(el)) return false;
+      if(has(el,'hidden')) return false;
+      if(has(el,'show')) return true;
+      if(el.style && el.style.display === 'none') return false;
+      /* no class convention on this game: fall back to layout where there is a
+         browser to ask, and to "not on screen" where there is not. */
+      return (typeof el.offsetParent !== 'undefined') ? el.offsetParent !== null : false;
+    }
+
+    /* ---- is this card a START card rather than a run end? --------------
+       Structural, not a list of game names. */
+    function isStartCard(){
+      if(attrHidden(scoreEl)) return true;                 // card is not presenting a score
+      var kids = card.querySelectorAll ? card.querySelectorAll('[id]') : [];
+      for(var i=0;i<kids.length;i++){
+        var id = kids[i].id || '';
+        if(/^start/i.test(id) && !attrHidden(kids[i])) return true;
+      }
+      return false;
+    }
+
+    /* ---- did the player WIN? -------------------------------------------
+       In order of authority: an explicit declaration from the engine, the
+       chassis's own .win class on the card, then the title the game wrote.
+       The vocabulary is OUR words (clear / complete / vault / champion); it
+       never names another game. */
+    function won(){
+      try{ if(window.FB_OUTRO && typeof window.FB_OUTRO.won === 'boolean') return window.FB_OUTRO.won; }catch(e){}
+      if(has(card,'win')) return true;
+      var t = (titleEl && titleEl.textContent || '').toUpperCase();
+      return /\b(CLEAR|CLEARED|COMPLETE|COMPLETED|WIN|WON|VAULT|CHAMPION|PERFECT)\b/.test(t);
+    }
+
+    /* ---- the tally rows ------------------------------------------------
+       Harvested from the stat line the card ALREADY prints, so every game gets
+       its own itemisation with no per-game code: BotFord's "Cave 7 · Beads 148
+       · Time 1:32" becomes three rows, and a game that only prints a time gets
+       one. Two shapes exist in the roster:
+         <p>Cave <b>7</b> · Beads <b>148</b></p>   label before each <b>
+         <p><b>Bay 1 · 0 kills</b></p>             one <b>, labels inside
+       The second is split on the separator and each piece read as
+       "<value> <label>". */
+    function harvest(){
+      var rows = [], ps = card.querySelectorAll ? card.querySelectorAll('p') : [];
+      for(var i=0;i<ps.length;i++){
+        var p = ps[i];
+        if(has(p,'fb-runline')) continue;                  // the stickiness line, not a stat
+        var bs = p.querySelectorAll ? p.querySelectorAll('b') : [];
+        if(!bs.length) continue;
+        var labelled = 0, out = [];
+        for(var j=0;j<bs.length;j++){
+          var b = bs[j], val = (b.textContent||'').trim();
+          if(!val) continue;
+          /* the text immediately before this <b> inside the <p> is its label */
+          var lab = '';
+          var prev = b.previousSibling;
+          while(prev && !lab){
+            if(prev.nodeType === 3) lab = (prev.textContent||'').trim();
+            prev = prev.previousSibling;
+          }
+          lab = lab.replace(/^[·•|,\s]+/,'').replace(/[:·•|,\s]+$/,'');
+          if(lab){ labelled++; out.push([lab, val]); }
+          else {
+            /* no label outside: the <b> carries "Bay 1 · 0 kills" itself */
+            var parts = val.split(/\s*[·•|]\s*/);
+            for(var k=0;k<parts.length;k++){
+              var piece = parts[k].trim(); if(!piece) continue;
+              var m = /^([0-9][0-9,.:]*)\s+(.+)$/.exec(piece) || /^(.+?)\s+([0-9][0-9,.:]*)$/.exec(piece);
+              if(m && /^[0-9]/.test(m[1])) out.push([m[2], m[1]]);
+              else if(m) out.push([m[1], m[2]]);
+              else out.push(['', piece]);
+            }
+          }
+        }
+        if(out.length){ rows = rows.concat(out); p.classList.add('fb-outro-src'); }
+      }
+      return rows;
+    }
+
+    /* ---- the rank the run earned ---------------------------------------
+       This is the beat the whole screen exists for, and it has to say
+       something TRUE in four different worlds — the first version only worked
+       in one of them.
+
+       Measured on the roster the day this layer was written: of eighteen
+       published boards, sixteen were HEADER ONLY and two held a single row.
+       The scanner only began recording rows at all on 2026-10-02
+       ([[the-score-never-reached-the-board]]), so "where do I rank" had no
+       answer on essentially every game, and the first draft of this layer
+       rendered that as a missing panel — a dead beat that looks exactly like a
+       broken one. That is the mistake this factory keeps paying for, so:
+
+         board with 5+ entries  the world placement and a percentile band.
+                                Calibrated per game by the real distribution,
+                                so no threshold is hand-set.
+         board with 1-4         the placement is real and the percentile is
+                                noise, so the placement is shown and the title
+                                comes from the player's OWN ladder.
+         board served, empty    say so plainly, and rank against your own runs.
+                                Stated as a fact, never as a prompt to spend:
+                                free players are children (MONETISATION-BRIEF).
+         no board served        the personal ladder alone.
+
+       The personal ladder is this layer's own small store (the last ten runs,
+       one key, localStorage) — never the stickiness layer's, so neither layer
+       can break the other. A free player with no wallet therefore always has a
+       real ranking to beat, which is the paid layer's content flowing back to
+       them for nothing. */
+    var BANDS = [
+      [0.00, 'FACTORY CHAMPION'],
+      [0.03, 'FACTORY LEGEND'],
+      [0.10, 'TURBO UNIT'],
+      [0.25, 'CHROME BOT'],
+      [0.50, 'BOLT HUNTER'],
+      [1.01, 'SCRAP RUNNER']
+    ];
+    function bandFor(frac){
+      for(var i=0;i<BANDS.length;i++) if(frac <= BANDS[i][0]) return BANDS[i][1];
+      return BANDS[BANDS.length-1][1];
+    }
+    var ord = function(n){
+      return n + (n%10===1&&n%100!==11?'st':n%10===2&&n%100!==12?'nd':n%10===3&&n%100!==13?'rd':'th');
+    };
+
+    /* this layer's own run history */
+    var HKEY = 'fb:' + ((location.hostname||'game').split('.')[0] || 'game') + ':outro:runs';
+    function loadRuns(){
+      try{ var v = JSON.parse(localStorage.getItem(HKEY) || '[]');
+           return (v instanceof Array ? v : []).filter(function(n){ return typeof n === 'number' && isFinite(n); })
+                                               .sort(function(a,b){ return b-a; }); }
+      catch(e){ return []; }
+    }
+    function saveRun(n){
+      try{ var v = loadRuns(); v.push(n); v.sort(function(a,b){ return b-a; });
+           localStorage.setItem(HKEY, JSON.stringify(v.slice(0,10))); }catch(e){}
+    }
+    /* the player's own ladder: title, a note, and how full the bar sits */
+    function personal(score, prior){
+      /* STANDARD COMPETITION RANKING: a place is one plus the number of runs
+         STRICTLY BETTER than this one, so equal scores share a rank. The first
+         version counted every run that this one did not beat, which made a
+         score EQUAL to your best read "2ND BEST RUN" — correct-looking on a
+         game whose scores are all different, and wrong on every game where
+         scores tie or cap. Bot Pong is first to 11: every single win ties at
+         11, so a perfect 11-0 would have been filed as your second-best run,
+         for ever. The world placement below deliberately does NOT do this —
+         tying someone already on the board leaves you behind them, because
+         they got there first. */
+      var better = 0;
+      for(var i=0;i<prior.length;i++) if(prior[i] > score) better++;
+      var place = better + 1;
+      var best = prior.length ? prior[0] : 0;
+      if(!prior.length) return { title:'ROOKIE BOT', note:'First run banked. Everything from here beats it.', frac: 0.5 };
+      if(place === 1){
+        return score > best
+          ? { title:'PERSONAL BEST', note:'Your best run yet — the old one was <b>' + fmt(best) + '</b>.', frac: 1 }
+          : { title:'MATCHED YOUR BEST', note:'Level with your best of <b>' + fmt(best) + '</b>.', frac: 1 };
+      }
+      return { title: ord(place).toUpperCase() + ' BEST RUN',
+               note: 'Your best is <b>' + fmt(best) + '</b> — <b>' + fmt(best - score) + '</b> to go.',
+               frac: best > 0 ? Math.max(0.04, score / best) : 0.5 };
+    }
+
+    /* parse the scanner's CSV. Its schema varies per game by design (BotFord
+       has `beads`, BubbleBot has `pops`), so read the HEADER and take the score
+       column by name — never by position. An empty board is a real, different
+       answer from an unreadable one, so this returns [] and null respectively. */
+    function scoresFrom(text){
+      var lines = String(text||'').trim().split(/\r?\n/);
+      if(!lines.length || !lines[0]) return null;
+      var head = lines[0].split(',').map(function(s){ return s.trim(); });
+      var col = head.indexOf('score_adjusted');
+      if(col < 0) col = head.indexOf('score_raw');
+      if(col < 0) col = head.indexOf('score');
+      if(col < 0) return null;                       // not a board we understand
+      var out = [];
+      for(var i=1;i<lines.length;i++){
+        var cells = lines[i].split(',');
+        if(cells.length <= col) continue;
+        var v = parseInt(String(cells[col]).replace(/[^0-9-]/g,''),10);
+        if(isFinite(v)) out.push(v);
+      }
+      return out.sort(function(a,b){ return b-a; }); // [] = a board with nobody on it
+    }
+
+    /* ---- build the block once, refill it on every run end --------------- */
+    var box = document.createElement('div');
+    box.className = 'fb-outro';
+    box.innerHTML =
+      '<span class="fb-outro-kicker"></span>' +
+      '<img class="fb-outro-hero" alt="" aria-hidden="true" hidden />' +
+      '<ul class="fb-outro-tally"></ul>' +
+      '<div class="fb-outro-total"><i>Final score</i><b>0</b></div>' +
+      '<div class="fb-outro-rank" hidden>' +
+        '<div class="fb-outro-title"><span></span><em></em></div>' +
+        '<div class="fb-outro-bar"><span></span></div>' +
+        '<small class="fb-outro-note"></small>' +
+      '</div>' +
+      '<span class="fb-outro-skip">tap to skip</span>';
+    var q = function(sel){ return box.querySelector(sel); };
+
+    /* Insert ABOVE the stickiness run-line and the buttons, BELOW the title and
+       the (now hidden) plain score — so the card reads top to bottom as
+       verdict, tally, rank, personal best, replay.
+
+       The anchor has to be walked UP to a direct child of the card first. The
+       first version compared `anchor.parentNode === card` and gave up when it
+       was not, which on every game with a .btnrow (BotFord, BOTRUN) is always:
+       the stickiness layer inserts its run-line before #retryBtn, so the line
+       lives INSIDE the button row. The whole ending screen then appended after
+       the buttons and the card read title, best, REPLAY BUTTON, tally, score.
+       It took a screenshot to see it, because order is the one property a
+       DOM-only gate had not been asked for — verify-outro now asserts it. */
+    function place(){
+      var up = function(node){
+        while(node && node.parentNode && node.parentNode !== card) node = node.parentNode;
+        return (node && node.parentNode === card) ? node : null;
+      };
+      /* Directly UNDER THE TITLE, so the card always reads verdict → tally →
+         rank → personal best → replay. Anchoring on the buttons instead put
+         the whole ending screen BELOW anything else the card happened to
+         carry: on Bot Merge the initials box and the device high-score list
+         sat between the title and the tally and broke the ending in half. The
+         chassis's own `.big` and stat line are hidden by this layer, so
+         landing above them changes nothing on the other games. */
+      var title = up(document.getElementById('overTitle')) || up(card.querySelector('h1,h2'));
+      if(title && title.nextSibling) card.insertBefore(box, title.nextSibling);
+      else if(title) card.appendChild(box);
+      else {
+        var anchor = up(card.querySelector('.fb-runline')) ||
+                     up(card.querySelector('.btnrow')) ||
+                     up(document.getElementById('retryBtn')) ||
+                     up(card.querySelector('button'));
+        if(anchor) card.insertBefore(box, anchor);
+        else card.appendChild(box);
+      }
+    }
+    place();
+
+    var hero = q('.fb-outro-hero');
+    /* The hero is the real Bot 106 PNG every game already ships (Founder,
+       2026-09-25). Shown only once the browser confirms it decoded, so a game
+       without the asset simply has no hero rather than a broken image. */
+    try{
+      hero.addEventListener('load', function(){ hero.hidden = false; });
+      hero.addEventListener('error', function(){ hero.hidden = true; });
+      hero.src = 'assets/hero/bot-106.png';
+    }catch(e){}
+
+    /* ---- the count-up ---------------------------------------------------- */
+    var raf = (window.requestAnimationFrame || function(f){ return setTimeout(function(){ f(Date.now()); }, 16); });
+    var timer = null, settle = null, target = 0;
+    function land(){
+      if(timer){ clearTimeout(timer); timer = null; }
+      box.classList.remove('fb-outro-counting');
+      q('.fb-outro-total b').textContent = fmt(target);
+    }
+    function countTo(n){
+      target = n;
+      if(reduced || n <= 0){ land(); return; }
+      box.classList.add('fb-outro-counting');
+      var DUR = Math.min(1400, 420 + Math.log10(Math.max(10,n)) * 220), t0 = Date.now();
+      (function tick(){
+        if(!box.classList.contains('fb-outro-counting')) return;    // skipped
+        var p = Math.min(1, (Date.now() - t0) / DUR);
+        var eased = 1 - Math.pow(1 - p, 3);
+        q('.fb-outro-total b').textContent = fmt(Math.round(n * eased));
+        if(p >= 1){ land(); return; }
+        timer = setTimeout(tick, 32);
+      })();
+    }
+
+    /* ---- the rank beat --------------------------------------------------- */
+    var MODE = '';
+    function paintRank(score){
+      var rank = q('.fb-outro-rank');
+      var prior = loadRuns();                        // BEFORE this run is added
+      saveRun(score);
+      var me = personal(score, prior);
+
+      function paint(title, right, note, frac){
+        rank.hidden = false;
+        q('.fb-outro-title span').textContent = title;
+        q('.fb-outro-title em').textContent = right || '';
+        q('.fb-outro-note').innerHTML = note;
+        var fill = q('.fb-outro-bar span');
+        var pct = Math.max(4, Math.min(100, Math.round(frac * 100)));
+        if(reduced) fill.style.width = pct + '%';
+        else raf(function(){ fill.style.width = pct + '%'; });
+      }
+
+      var done = function(scores){
+        if(scores && scores.length >= 5){
+          var beat = 0;
+          for(var i=0;i<scores.length;i++){ if(score > scores[i]) break; beat++; }
+          var place = beat + 1, total = scores.length + 1, frac = (place - 1) / total;
+          MODE = 'world';
+          paint(bandFor(frac), 'top ' + Math.max(1, Math.round(frac*100)) + '%',
+                place === 1 ? 'That is the <b>best run on the board</b>.'
+                            : 'That run would place <b>' + ord(place) + '</b> of ' + total + ' on the board.',
+                1 - frac);
+        } else if(scores && scores.length){
+          var b2 = 0;
+          for(var j=0;j<scores.length;j++){ if(score > scores[j]) break; b2++; }
+          MODE = 'thin';
+          paint(me.title, '', 'That run would place <b>' + ord(b2 + 1) + '</b> of ' +
+                (scores.length + 1) + ' on the board. ' + me.note, me.frac);
+        } else if(scores){
+          /* a board is published and nobody is on it. Say it plainly: a fact,
+             with no call to action — this screen is seen by children. */
+          MODE = 'empty';
+          paint(me.title, '', 'Nobody has banked a score on this board yet. ' + me.note, me.frac);
+        } else {
+          MODE = 'personal';
+          paint(me.title, '', me.note, me.frac);
+        }
+      };
+
+      if(!BOARD){ done(null); return; }
+      try{
+        fetch(BOARD, { cache:'no-store' })
+          .then(function(r){ return r.ok ? r.text() : null; })
+          .then(function(t){ done(t == null ? null : scoresFrom(t)); })
+          .catch(function(){ done(null); });
+      }catch(e){ done(null); }
+    }
+
+    /* ---- the win flourish ------------------------------------------------ */
+    function sparks(){
+      if(reduced) return;
+      var hold = document.createElement('div');
+      hold.className = 'fb-outro-sparks'; hold.setAttribute('aria-hidden','true');
+      var cols = ['#f2a03d','#ffd9a0','#9be7d0','#fff'];
+      for(var i=0;i<10;i++){
+        var s = document.createElement('i');
+        s.style.left = (4 + i*10 + (i%3)*3) + '%';
+        s.style.background = cols[i % cols.length];
+        s.style.animationDelay = (i * 55) + 'ms';
+        hold.appendChild(s);
+      }
+      card.appendChild(hold);
+      setTimeout(function(){ try{ hold.remove ? hold.remove() : hold.parentNode.removeChild(hold); }catch(e){} }, 2200);
+    }
+
+    /* ---- run it ----------------------------------------------------------- */
+    function show(){
+      /* THE CARD MAY HAVE BEEN REBUILT. BOTRUN composes its run-over card at
+         run end with `overCard.innerHTML = '<h2 id="overTitle">TIME UP</h2>…'`
+         and THEN reveals it, which destroys this layer's block and leaves the
+         nodes we cached pointing at detached elements. The Founder's screenshot
+         was the result: a bare "TIME UP" and a retry button, with no score at
+         all — because our tally was gone AND our CSS was still hiding the
+         card's own `.big` readout. Worse than before the layer existed.
+         So: re-resolve what we read, and re-attach before we render. */
+      scoreEl = $('oScore')    || scoreEl;
+      titleEl = $('overTitle') || titleEl;
+      if(box.parentNode !== card) place();
+
+      var score = num(scoreEl.textContent), win = won();
+      /* and only now may the card's own score be hidden — this class is
+         exactly "make broken look different from working", so the layer must
+         never suppress what the game already shows unless its replacement is
+         really on screen. */
+      if(box.parentNode === card) document.body.classList.add('fb-outro-on');
+      box.classList.remove('fb-outro-win','fb-outro-end');
+      box.classList.add(win ? 'fb-outro-win' : 'fb-outro-end');
+      q('.fb-outro-kicker').textContent = win ? 'Shift complete · Bot 106 made it out'
+                                              : 'Shift ended · Bot 106 powers down';
+      var rows = harvest(), ul = q('.fb-outro-tally');
+      ul.innerHTML = '';
+      for(var i=0;i<rows.length;i++){
+        var li = document.createElement('li');
+        li.innerHTML = '<i></i><b></b>';
+        li.firstChild.textContent = rows[i][0];
+        li.lastChild.textContent  = rows[i][1];
+        li.style.animationDelay = (reduced ? 0 : 60 + i*85) + 'ms';
+        ul.appendChild(li);
+      }
+      countTo(score);
+      paintRank(score);
+      if(win) sparks();
+      box.hidden = false;
+      /* The card grew: a landscape phone may now need to scroll to the retry
+         button, and the device layer cannot know that. Nudge it into view. */
+      settle = setTimeout(function(){
+        try{ var b = document.getElementById('retryBtn') || card.querySelector('button');
+             if(b && b.scrollIntoView) b.scrollIntoView({ block:'nearest' }); }catch(e){}
+      }, reduced ? 0 : 1500);
+    }
+
+    function hide(){
+      box.hidden = true;
+      document.body.classList.remove('fb-outro-on');
+      if(settle){ clearTimeout(settle); settle = null; }
+      land();
+    }
+    box.hidden = true;
+
+    /* skipping the ceremony: any tap or key lands the tally at once */
+    var skip = function(){ if(box.classList.contains('fb-outro-counting')) land(); };
+    try{
+      box.addEventListener('click', skip);
+      card.addEventListener('click', skip);
+      addEventListener('keydown', skip, true);
+    }catch(e){}
+
+    /* The overlay's reveal is a class or attribute change on the overlay (and on
+       mrbot, on the card). Watch both, and re-ask the question rather than
+       trusting which class moved. */
+    var on = false;
+    function evaluate(){
+      var live = visible(overlay) && !attrHidden(card) && !isStartCard();
+      if(live && !on){ on = true; show(); }
+      else if(!live && on){ on = false; hide(); }
+    }
+    try{
+      var mo = new MutationObserver(evaluate);
+      mo.observe(overlay, { attributes:true, attributeFilter:['class','style','hidden'] });
+      mo.observe(card,    { attributes:true, attributeFilter:['class','style','hidden'] });
+      /* A game that rebuilds the card AFTER revealing it would tear the ending
+         screen out from under a player who is looking at it. Watch the card's
+         own children and put it back. Re-inserting fires this observer again,
+         and the guard below makes that pass a no-op, so it cannot loop. */
+      new MutationObserver(function(){
+        if(on && box.parentNode !== card){ place(); show(); }
+      }).observe(card, { childList:true });
+    }catch(e){}
+    /* The chassis writes the score and THEN adds .show, so the observer is
+       enough; this one call covers a game that was already showing the card
+       when the layer bound (a reload onto a finished run). */
+    evaluate();
+
+    /* exposed for verify-outro.js: a gate must be able to ask the layer what it
+       did, rather than infer it from pixels. Reading it changes nothing. */
+    window.FB_OUTRO_STATE = function(){
+      return { live:on,
+               /* ON SCREEN, not merely built. verify-outro's own self-test
+                  caught this gate passing a layer that assembled the entire
+                  ending screen and left it hidden — the same shape as a draw
+                  path that runs and paints nothing. */
+               visible: !box.hidden && box.parentNode === card,
+               won:box.classList.contains('fb-outro-win'),
+               total:q('.fb-outro-total b').textContent,
+               rows:box.querySelectorAll('.fb-outro-tally li').length,
+               rank:!q('.fb-outro-rank').hidden, mode:MODE,
+               rankTitle:q('.fb-outro-title span').textContent,
+               bar:(q('.fb-outro-bar span').style.width||''),
+               counting:box.classList.contains('fb-outro-counting') };
+    };
+  }catch(e){ /* an ending screen must never break a game */ }
+})();
+</script>
+</body>
+</html>
