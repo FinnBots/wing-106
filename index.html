@@ -737,12 +737,17 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
 
 </style>
 <script id="fb-theme">
-/* FINNBOTS NIGHT MODE v1 (2026-10-17) — injected as the fb-theme script at the END of <head>,
+/* FINNBOTS NIGHT MODE v2 (2026-10-17) — injected as the fb-theme script at the END of <head>,
    so the saved choice is on <html> before the first paint (no light flash in night mode).
    Source of truth: factory/templates/theme-switch.js; applied by apply-brand.js; verify-game
    pins every game's copy to this file byte for byte. Never hand-edit a game's copy.
-   The device's own light/dark setting applies until the player flips the switch; the choice is
-   remembered per game (localStorage 'fb-theme'). Without this script the switch stays hidden and
+   The device's own light/dark setting applies until the player flips the switch. v2: the choice is
+   SHARED — one cookie 'fb-theme' on .finnstergram.com, so night mode set on finnstergram.com carries
+   into every game and back (Founder: "if in night mode this need to carry through to games"). The
+   cookie holds only 'light' or 'dark'; localStorage stays as a fallback (old per-game choice, or a
+   browser that refuses the cookie). Re-read when the tab is shown again, so a choice made in another
+   tab follows the player back. The SAME rule lives in website/scripts/apply-layout.py + site.js.
+   Without this script the switch stays hidden and
    the device setting still applies — the brand layer's dark theme does not depend on it.
    FIT: many topbars are exactly full on a phone, so the switch must never push a game control
    off-screen (it did, on 15 games, in the first pilot). After layout it shows each switch,
@@ -751,7 +756,18 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
 (function(){
   var root=document.documentElement, KEY='fb-theme';
   root.classList.add('fb-js');
-  try{ var t=localStorage.getItem(KEY); if(t==='light'||t==='dark') root.setAttribute('data-theme',t); }catch(e){}
+  function saved(){
+    var m=/(?:^|;\s*)fb-theme=(light|dark)(?:;|$)/.exec(document.cookie||''); if(m) return m[1];
+    try{ var t=localStorage.getItem(KEY); if(t==='light'||t==='dark') return t; }catch(e){}
+    return null;
+  }
+  function save(v){
+    var d=/(^|\.)finnstergram\.com$/.test(location.hostname) ? '; Domain=finnstergram.com' : '';
+    document.cookie=KEY+'='+v+'; Path=/; Max-Age=31536000; SameSite=Lax'+d+(location.protocol==='https:' ? '; Secure' : '');
+    try{ localStorage.setItem(KEY, v); }catch(e){}
+  }
+  function apply(){ var t=saved(); if(t) root.setAttribute('data-theme',t); }
+  apply();
   var mq=window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function effective(){ return root.getAttribute('data-theme') || (mq && mq.matches ? 'dark' : 'light'); }
   function paint(){
@@ -772,11 +788,14 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
     for(var i=0;i<b.length;i++) b[i].addEventListener('click', function(){
       var next = effective()==='dark' ? 'light' : 'dark';
       root.setAttribute('data-theme', next);
-      try{ localStorage.setItem(KEY, next); }catch(e){}
+      save(next);
       paint();
     });
     paint(); fit();
     window.addEventListener('resize', refit);
+    function resync(){ apply(); paint(); }                // a choice made on the site or another game
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) resync(); });
+    window.addEventListener('pageshow', resync);          // back/forward cache restores the old DOM
     window.addEventListener('load', fit);          // fonts and the seed badge can widen the bar after DOMContentLoaded
     setTimeout(fit, 1500);
   }
