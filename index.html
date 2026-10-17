@@ -2,6 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>WING 106 — a FinnBots game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -115,154 +116,6 @@ body:not(.mode-paid) .facts{display:none!important}
 .dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,38px)!important}
 @media (min-height:720px){.dpad{grid-template-columns:repeat(3,48px)!important;grid-template-rows:repeat(3,40px)!important}}
 .foot{font-size:11px!important;padding:2px 0!important}
-</style>
-<style id="fb-brand">
-/* ===== FINNBOTS BRAND LAYER v1 (2026-09-24) ==========================
-   Append-only override, injected as <style id="fb-brand"> AFTER every other
-   style block so it wins without editing a single line of a game's own CSS.
-   Three jobs:
-     1. BRAND  — the FinnBots lockup (bot mark + FINN/BOTS wordmark) in the topbar.
-     2. CABINET — the canvas reads as an arcade screen: bezel, amber rim light, glow.
-     3. THEME  — dark-mode parity with the hub (games.finnstergram.com adapts, the
-                 games did not, so hub -> game was a light/dark slap in the face).
-   Source of truth: factory/templates/brand-layer.css. Never hand-edit a game copy;
-   change it here and re-run apply-brand.sh. ==================================== */
-:root{
-  --fb-amber:#f2a03d; --fb-plum:#5f4c57; --fb-plum-deep:#3e323a;
-  --fb-screen:#241b28; --fb-bezel:#3e323a; --fb-rim:rgba(242,160,61,.45);
-  --fb-ink:#3e323a; --fb-surface:rgba(255,255,255,.55);
-}
-
-/* ---- 1. BRAND LOCKUP --------------------------------------------------- */
-.fb-mark{
-  display:inline-flex; align-items:center; gap:6px; flex:none;
-  text-decoration:none; color:var(--fb-plum); line-height:1;
-  padding:2px 4px; border-radius:999px; -webkit-tap-highlight-color:transparent;
-}
-.fb-mark:hover{ color:var(--fb-plum-deep); }
-.fb-mark:focus-visible{ outline:3px solid var(--electric,#3a6ff7); outline-offset:2px; }
-.fb-bot{ width:22px; height:22px; flex:none; display:block; }
-.fb-word{
-  font-family:var(--disp,'Jersey 15',system-ui,sans-serif);
-  font-size:16px; letter-spacing:.5px; color:currentColor; white-space:nowrap;
-}
-.fb-word i{ font-style:normal; color:var(--fb-amber); }
-/* Phones: the topbar also carries the mode pills + icon buttons, so drop the
-   wordmark and keep the bot mark rather than letting the row overflow. */
-@media (max-width:430px){ .fb-word{ display:none; } }
-body.is-portrait .fb-bot{ width:20px; height:20px; }
-
-/* ---- 2. CABINET ------------------------------------------------------- */
-/* Rings are box-shadow spread only: they paint OUTSIDE the box and never take
-   layout, so fitCanvas' letterbox maths is untouched. */
-canvas#game, canvas{
-  border-radius:12px;
-  box-shadow:
-    0 0 0 2px var(--fb-rim),
-    0 0 0 9px var(--fb-bezel),
-    0 0 0 10px rgba(0,0,0,.28),
-    0 16px 34px -8px rgba(62,50,58,.42),
-    0 0 58px -12px rgba(242,160,61,.40);
-}
-/* The surround needs room for the 10px of rings, or they clip at the viewport edge. */
-.surface{ padding:12px 12px !important; }
-body.is-portrait .surface{ padding:10px !important; }
-
-/* ---- 3. BRANDED BACKDROP (light) -------------------------------------- */
-/* Was a flat peach gradient on every game. Now: an amber glow pool behind the
-   cabinet over a faint plum blueprint grid — the FinnBots workshop floor. */
-body{
-  background:
-    radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.22), rgba(242,160,61,0) 72%),
-    repeating-linear-gradient(0deg,  rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
-    repeating-linear-gradient(90deg, rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
-    radial-gradient(120% 80% at 50% 0%, var(--soft,#fdf3e7), var(--peach,#f5c8a0));
-  background-attachment:fixed;
-}
-
-/* ---- 3b. LAYOUT PARITY --------------------------------------------------
-   Two chrome generations had drifted apart. The 7 newest games carry the mode
-   toggle as a compact pill pair in the topbar and hide the free-mode facts line
-   (the How-To overlay already carries that message) — the chassis' own
-   "game-first layout" rule. 8 older games still paint a full-width amber bar
-   plus a facts row, which looks like a different product and eats two rows of
-   play area. Pure CSS, no DOM change: `.wrap > .modebar` matches ONLY the
-   separate-row generation, because in the newer games the modebar sits inside
-   <header class="topbar"> and is therefore not a direct child of .wrap. */
-.wrap > .modebar{ align-self:center; width:auto; max-width:100%; }
-.wrap > .modebar .modepill{ flex:0 0 auto; font-size:12.5px; padding:4px 14px; }
-body:not(.mode-paid) .facts{ display:none; }
-
-/* ---- 4. DARK THEME — parity with the hub ------------------------------ */
-@media (prefers-color-scheme: dark){
-  :root{
-    --fb-ink:#f4eef2; --fb-surface:rgba(255,255,255,.075);
-    --soft:#2f2730; --peach:#221b20; --ink:#f4eef2;
-    --plum-deep:#f4eef2; --muted:#b9aab3;
-  }
-  body{
-    color:#f4eef2;
-    background:
-      radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.13), rgba(242,160,61,0) 72%),
-      repeating-linear-gradient(0deg,  rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
-      repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px),
-      radial-gradient(120% 90% at 50% 0%, #2b2330, #1b151a);
-    background-attachment:fixed;
-  }
-  .fb-mark{ color:#f4eef2; }
-  .fb-mark:hover{ color:#fff; }
-  .title{ color:#f4eef2; }
-  .pill{ background:rgba(255,255,255,.12); color:#f4eef2; }
-  .iconbtn{ background:rgba(255,255,255,.12); color:#f4eef2; box-shadow:none; }
-  .modebar{ background:rgba(255,255,255,.075); box-shadow:none; }
-  .modepill{ color:#b9aab3; }
-  .modepill.active{ background:var(--fb-amber); color:#3a2a12; }
-  .hud{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
-  .hud .lab{ color:#b9aab3; }
-  .facts, .walletbar{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
-  .facts{ color:#e6dce2; }
-  .walletrow .lbl{ color:#e6dce2; }
-  .wallet-status{ color:#b9aab3; }
-  .wallet-status.ok{ color:#f4eef2; }
-  .ctl{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
-  .ctl:active,.ctl.on{ background:var(--fb-amber); color:#3a2a12; }
-  .ctl.fire{ background:#6d5765; color:#fff; }
-  .ctl.fire:active,.ctl.fire.on{ background:var(--fb-amber); color:#3a2a12; }
-  .card, .panel{ background:#2f2730; color:#f4eef2; }
-  .card h2, .panel h2, .card .big{ color:#f4eef2; }
-  .card p, .panel p, .rules li{ color:#e6dce2; }
-  .safe{ color:#b9aab3; }
-  .lnks a{ color:var(--fb-amber); }
-  .btn{ background:rgba(255,255,255,.14); color:#f4eef2; }
-  .btn:hover{ background:rgba(255,255,255,.22); }
-  .panel .ghostbtn{ color:#f4eef2; border-color:rgba(255,255,255,.22); }
-  /* --- older-generation chrome the chassis classes don't cover -------------
-     Found by probing every game's computed styles in dark mode, not by eye:
-     4 games paint a white .controls pill, DRUM PUSH white .actbtn, BOTBURNER a
-     white stick pad, and Mr Bot (pre-chassis) its own .status/.footer/d-pad. */
-  .controls{ background:rgba(255,255,255,.06); box-shadow:none; }
-  .actbtn{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
-  .actbtn.next{ background:#6d5765; color:#fff; }
-  /* the DISABLED next button is the white one — its own rule out-specifies .actbtn */
-  .actbtn.next:disabled{ background:rgba(255,255,255,.06); color:#8c7f88; }
-  .stickpad{ background:rgba(255,255,255,.10); }
-  .ctl.thrbtn{ background:rgba(255,255,255,.13); color:#f4eef2; }
-  .app .status{ background:rgba(255,255,255,.075); color:#c8bcc4; }
-  .app .footer{ background:transparent; }
-  .app .footer .tag{ color:var(--fb-amber); }
-  .app .footer a{ color:#b9aab3; }
-  .app .pad button, .app .up, .app .left, .app .down, .app .right{
-    background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
-
-  canvas#game, canvas{
-    box-shadow:
-      0 0 0 2px rgba(242,160,61,.5),
-      0 0 0 9px #161119,
-      0 0 0 10px rgba(0,0,0,.5),
-      0 16px 34px -8px rgba(0,0,0,.6),
-      0 0 64px -10px rgba(242,160,61,.32);
-  }
-}
 </style>
 <style id="fb-device">
 /* ==========================================================================
@@ -683,6 +536,254 @@ canvas{ touch-action:none; }
   setTimeout(boot, 0);   /* the Engine global is assigned after this script */
 })();
 </script>
+<style id="fb-brand">
+/* ===== FINNBOTS BRAND LAYER v2 (2026-10-17; v1 2026-09-24) ============
+   Append-only override, injected as <style id="fb-brand"> AFTER every other
+   style block so it wins without editing a single line of a game's own CSS.
+   Three jobs:
+     1. BRAND  — the FinnBots lockup (bot mark + FINN/BOTS wordmark) in the topbar.
+     2. CABINET — the canvas reads as an arcade screen: bezel, amber rim light, glow.
+     3. THEME  — dark-mode parity with the hub (games.finnstergram.com adapts, the
+                 games did not, so hub -> game was a light/dark slap in the face).
+   v2: the PIXEL bot mark (16x16 monitor head, magenta smile — the face of Bots #106/#20)
+   shared with finnstergram.com and the hub, and a NIGHT-MODE SWITCH in the topbar.
+   Section 4 below is written ONCE; apply-brand.js emits it twice — for "the device is
+   dark and the player has not chosen light", and for "the switch says dark" — scoping
+   each selector with :where() so the cascade is exactly what v1's @media block gave.
+   Source of truth: factory/templates/brand-layer.css. Never hand-edit a game copy;
+   change it here and re-run apply-brand.sh. ==================================== */
+:root{
+  --fb-amber:#f2a03d; --fb-plum:#5f4c57; --fb-plum-deep:#3e323a;
+  --fb-screen:#241b28; --fb-bezel:#3e323a; --fb-rim:rgba(242,160,61,.45);
+  --fb-ink:#3e323a; --fb-surface:rgba(255,255,255,.55); --fb-face:#ff4fd8;
+}
+
+/* ---- 1. BRAND LOCKUP --------------------------------------------------- */
+.fb-mark{
+  display:inline-flex; align-items:center; gap:6px; flex:none;
+  text-decoration:none; color:var(--fb-plum); line-height:1;
+  padding:2px 4px; border-radius:999px; -webkit-tap-highlight-color:transparent;
+}
+.fb-mark:hover{ color:var(--fb-plum-deep); }
+.fb-mark:focus-visible{ outline:3px solid var(--electric,#3a6ff7); outline-offset:2px; }
+.fb-bot{ width:24px; height:24px; flex:none; display:block; }
+.fb-word{
+  font-family:var(--disp,'Jersey 15',system-ui,sans-serif);
+  font-size:16px; letter-spacing:.5px; color:currentColor; white-space:nowrap;
+}
+.fb-word i{ font-style:normal; color:var(--fb-amber); }
+/* the night-mode switch: a compact pixel slider, sun <-> moon (hidden until fb-theme runs) */
+.fb-theme{ flex:none; display:inline-flex; align-items:center; padding:0; margin:0 2px; border:0;
+  background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+html:not(.fb-js) .fb-theme{ display:none; }
+.fbt-track{ position:relative; width:46px; height:26px; border-radius:8px; border:2px solid var(--fb-plum-deep);
+  background:linear-gradient(180deg,#ffe3a3,#ffc76b); box-shadow:2px 2px 0 0 var(--fb-plum-deep); overflow:hidden; }
+.fbt-thumb{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:5px; background:#fff6dc;
+  border:2px solid var(--fb-plum-deep); display:grid; place-items:center; transition:transform .3s cubic-bezier(.5,1.6,.5,1); }
+.fbt-thumb svg{ width:10px; height:10px; display:block; }
+.fbt-thumb .fbt-moon{ display:none; }
+.fb-theme[aria-checked="true"] .fbt-track{ background:linear-gradient(180deg,#2a2350,#141030); }
+.fb-theme[aria-checked="true"] .fbt-thumb{ transform:translateX(20px); background:#dfe6ff; }
+.fb-theme[aria-checked="true"] .fbt-thumb .fbt-sun{ display:none; }
+.fb-theme[aria-checked="true"] .fbt-thumb .fbt-moon{ display:block; }
+.fb-theme:focus-visible{ outline:3px solid var(--electric,#3a6ff7); outline-offset:2px; border-radius:8px; }
+/* Phones: the topbar also carries the mode pills + icon buttons, so drop the
+   wordmark and keep the bot mark rather than letting the row overflow. */
+@media (max-width:430px){ .fb-word{ display:none; } }
+body.is-portrait .fb-bot{ width:20px; height:20px; }
+
+/* ---- 2. CABINET ------------------------------------------------------- */
+/* Rings are box-shadow spread only: they paint OUTSIDE the box and never take
+   layout, so fitCanvas' letterbox maths is untouched. */
+canvas#game, canvas{
+  border-radius:12px;
+  box-shadow:
+    0 0 0 2px var(--fb-rim),
+    0 0 0 9px var(--fb-bezel),
+    0 0 0 10px rgba(0,0,0,.28),
+    0 16px 34px -8px rgba(62,50,58,.42),
+    0 0 58px -12px rgba(242,160,61,.40);
+}
+/* The surround needs room for the 10px of rings, or they clip at the viewport edge. */
+.surface{ padding:12px 12px !important; }
+body.is-portrait .surface{ padding:10px !important; }
+
+/* ---- 3. BRANDED BACKDROP (light) -------------------------------------- */
+/* Was a flat peach gradient on every game. Now: an amber glow pool behind the
+   cabinet over a faint plum blueprint grid — the FinnBots workshop floor. */
+body{
+  background:
+    radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.22), rgba(242,160,61,0) 72%),
+    repeating-linear-gradient(0deg,  rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(95,76,87,.055) 0 1px, transparent 1px 40px),
+    radial-gradient(120% 80% at 50% 0%, var(--soft,#fdf3e7), var(--peach,#f5c8a0));
+  background-attachment:fixed;
+}
+
+/* ---- 3b. LAYOUT PARITY --------------------------------------------------
+   Two chrome generations had drifted apart. The 7 newest games carry the mode
+   toggle as a compact pill pair in the topbar and hide the free-mode facts line
+   (the How-To overlay already carries that message) — the chassis' own
+   "game-first layout" rule. 8 older games still paint a full-width amber bar
+   plus a facts row, which looks like a different product and eats two rows of
+   play area. Pure CSS, no DOM change: `.wrap > .modebar` matches ONLY the
+   separate-row generation, because in the newer games the modebar sits inside
+   <header class="topbar"> and is therefore not a direct child of .wrap. */
+.wrap > .modebar{ align-self:center; width:auto; max-width:100%; }
+.wrap > .modebar .modepill{ flex:0 0 auto; font-size:12.5px; padding:4px 14px; }
+body:not(.mode-paid) .facts{ display:none; }
+/* Mr Bot EXEMPTION (Founder call, 2026-09-24). Every other game's free-mode line is
+   the same boilerplate ("Free to play · wallet-free · pays nothing"), which the How-To
+   overlay already says — so hiding it costs nothing. Mr Bot's carries GAMEPLAY hints
+   ("fetch the 3 parts · spray OIL to stun"), so hiding it loses information. `.app` is
+   Mr Bot's own wrapper and appears in no other game (checked across the roster); its
+   .facts declares no display of its own, so block is the original value.
+   `!important` is REQUIRED, not defensive: Mr Bot's OWN #pv-optimise block (2026-09-22
+   portrait pass) already carried `body:not(.mode-paid) .facts{display:none!important}` —
+   so that line had been hidden since long before the brand layer existed, and only an
+   !important at higher specificity can bring it back. */
+body:not(.mode-paid) .app .facts{ display:block !important; }
+
+/* ---- 4. DARK THEME — parity with the hub ------------------------------ */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --fb-ink:#f4eef2; --fb-surface:rgba(255,255,255,.075); --soft:#2f2730; --peach:#221b20; --ink:#f4eef2; --plum-deep:#f4eef2; --muted:#b9aab3; }
+  :where(:root:not([data-theme="light"])) body{ color:#f4eef2; background: radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.13), rgba(242,160,61,0) 72%), repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), radial-gradient(120% 90% at 50% 0%, #261e2b, #17121a); background-attachment:fixed; }
+  :where(:root:not([data-theme="light"])) .fb-mark{ color:#e3c9d8; }
+  :where(:root:not([data-theme="light"])) .fbt-track, :where(:root:not([data-theme="light"])) .fbt-thumb{ border-color:#6b5662; }
+  :where(:root:not([data-theme="light"])) .fbt-track{ box-shadow:2px 2px 0 0 #6b5662; }
+  :where(:root:not([data-theme="light"])) .fb-mark:hover{ color:#fff; }
+  :where(:root:not([data-theme="light"])) .title{ color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .pill{ background:rgba(255,255,255,.12); color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .iconbtn{ background:rgba(255,255,255,.12); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .modebar{ background:rgba(255,255,255,.075); box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .modepill{ color:#b9aab3; }
+  :where(:root:not([data-theme="light"])) .modepill.active{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root:not([data-theme="light"])) .hud{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .hud .lab{ color:#b9aab3; }
+  :where(:root:not([data-theme="light"])) .facts, :where(:root:not([data-theme="light"])) .walletbar{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .facts{ color:#e6dce2; }
+  :where(:root:not([data-theme="light"])) .walletrow .lbl{ color:#e6dce2; }
+  :where(:root:not([data-theme="light"])) .wallet-status{ color:#b9aab3; }
+  :where(:root:not([data-theme="light"])) .wallet-status.ok{ color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .ctl{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .ctl:active, :where(:root:not([data-theme="light"])) .ctl.on{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root:not([data-theme="light"])) .ctl.fire{ background:#6d5765; color:#fff; }
+  :where(:root:not([data-theme="light"])) .ctl.fire:active, :where(:root:not([data-theme="light"])) .ctl.fire.on{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root:not([data-theme="light"])) .card, :where(:root:not([data-theme="light"])) .panel{ background:#2f2730; color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .card h2, :where(:root:not([data-theme="light"])) .panel h2, :where(:root:not([data-theme="light"])) .card .big{ color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .card p, :where(:root:not([data-theme="light"])) .panel p, :where(:root:not([data-theme="light"])) .rules li{ color:#e6dce2; }
+  :where(:root:not([data-theme="light"])) .safe{ color:#b9aab3; }
+  :where(:root:not([data-theme="light"])) .lnks a{ color:var(--fb-amber); }
+  :where(:root:not([data-theme="light"])) .btn{ background:rgba(255,255,255,.14); color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .btn:hover{ background:rgba(255,255,255,.22); }
+  :where(:root:not([data-theme="light"])) .panel .ghostbtn{ color:#f4eef2; border-color:rgba(255,255,255,.22); }
+  :where(:root:not([data-theme="light"])) .controls{ background:rgba(255,255,255,.06); box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .actbtn{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) .actbtn.next{ background:#6d5765; color:#fff; }
+  :where(:root:not([data-theme="light"])) .actbtn.next:disabled{ background:rgba(255,255,255,.06); color:#8c7f88; }
+  :where(:root:not([data-theme="light"])) .stickpad{ background:rgba(255,255,255,.10); }
+  :where(:root:not([data-theme="light"])) .ctl.thrbtn{ background:rgba(255,255,255,.13); color:#f4eef2; }
+  :where(:root:not([data-theme="light"])) .app .status{ background:rgba(255,255,255,.075); color:#c8bcc4; }
+  :where(:root:not([data-theme="light"])) .app .footer{ background:transparent; }
+  :where(:root:not([data-theme="light"])) .app .footer .tag{ color:var(--fb-amber); }
+  :where(:root:not([data-theme="light"])) .app .footer a{ color:#b9aab3; }
+  :where(:root:not([data-theme="light"])) .app .pad button, :where(:root:not([data-theme="light"])) .app .up, :where(:root:not([data-theme="light"])) .app .left, :where(:root:not([data-theme="light"])) .app .down, :where(:root:not([data-theme="light"])) .app .right{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root:not([data-theme="light"])) canvas#game, :where(:root:not([data-theme="light"])) canvas{ box-shadow: 0 0 0 2px rgba(242,160,61,.5), 0 0 0 9px #161119, 0 0 0 10px rgba(0,0,0,.5), 0 16px 34px -8px rgba(0,0,0,.6), 0 0 64px -10px rgba(242,160,61,.32); }
+}
+/* the night-mode switch says dark (templates/theme-switch.js sets html[data-theme]) */
+  :root[data-theme="dark"]{ --fb-ink:#f4eef2; --fb-surface:rgba(255,255,255,.075); --soft:#2f2730; --peach:#221b20; --ink:#f4eef2; --plum-deep:#f4eef2; --muted:#b9aab3; }
+  :where(:root[data-theme="dark"]) body{ color:#f4eef2; background: radial-gradient(58% 42% at 50% 46%, rgba(242,160,61,.13), rgba(242,160,61,0) 72%), repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), radial-gradient(120% 90% at 50% 0%, #261e2b, #17121a); background-attachment:fixed; }
+  :where(:root[data-theme="dark"]) .fb-mark{ color:#e3c9d8; }
+  :where(:root[data-theme="dark"]) .fbt-track, :where(:root[data-theme="dark"]) .fbt-thumb{ border-color:#6b5662; }
+  :where(:root[data-theme="dark"]) .fbt-track{ box-shadow:2px 2px 0 0 #6b5662; }
+  :where(:root[data-theme="dark"]) .fb-mark:hover{ color:#fff; }
+  :where(:root[data-theme="dark"]) .title{ color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .pill{ background:rgba(255,255,255,.12); color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .iconbtn{ background:rgba(255,255,255,.12); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) .modebar{ background:rgba(255,255,255,.075); box-shadow:none; }
+  :where(:root[data-theme="dark"]) .modepill{ color:#b9aab3; }
+  :where(:root[data-theme="dark"]) .modepill.active{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root[data-theme="dark"]) .hud{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) .hud .lab{ color:#b9aab3; }
+  :where(:root[data-theme="dark"]) .facts, :where(:root[data-theme="dark"]) .walletbar{ background:rgba(255,255,255,.075); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) .facts{ color:#e6dce2; }
+  :where(:root[data-theme="dark"]) .walletrow .lbl{ color:#e6dce2; }
+  :where(:root[data-theme="dark"]) .wallet-status{ color:#b9aab3; }
+  :where(:root[data-theme="dark"]) .wallet-status.ok{ color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .ctl{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) .ctl:active, :where(:root[data-theme="dark"]) .ctl.on{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root[data-theme="dark"]) .ctl.fire{ background:#6d5765; color:#fff; }
+  :where(:root[data-theme="dark"]) .ctl.fire:active, :where(:root[data-theme="dark"]) .ctl.fire.on{ background:var(--fb-amber); color:#3a2a12; }
+  :where(:root[data-theme="dark"]) .card, :where(:root[data-theme="dark"]) .panel{ background:#2f2730; color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .card h2, :where(:root[data-theme="dark"]) .panel h2, :where(:root[data-theme="dark"]) .card .big{ color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .card p, :where(:root[data-theme="dark"]) .panel p, :where(:root[data-theme="dark"]) .rules li{ color:#e6dce2; }
+  :where(:root[data-theme="dark"]) .safe{ color:#b9aab3; }
+  :where(:root[data-theme="dark"]) .lnks a{ color:var(--fb-amber); }
+  :where(:root[data-theme="dark"]) .btn{ background:rgba(255,255,255,.14); color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .btn:hover{ background:rgba(255,255,255,.22); }
+  :where(:root[data-theme="dark"]) .panel .ghostbtn{ color:#f4eef2; border-color:rgba(255,255,255,.22); }
+  :where(:root[data-theme="dark"]) .controls{ background:rgba(255,255,255,.06); box-shadow:none; }
+  :where(:root[data-theme="dark"]) .actbtn{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) .actbtn.next{ background:#6d5765; color:#fff; }
+  :where(:root[data-theme="dark"]) .actbtn.next:disabled{ background:rgba(255,255,255,.06); color:#8c7f88; }
+  :where(:root[data-theme="dark"]) .stickpad{ background:rgba(255,255,255,.10); }
+  :where(:root[data-theme="dark"]) .ctl.thrbtn{ background:rgba(255,255,255,.13); color:#f4eef2; }
+  :where(:root[data-theme="dark"]) .app .status{ background:rgba(255,255,255,.075); color:#c8bcc4; }
+  :where(:root[data-theme="dark"]) .app .footer{ background:transparent; }
+  :where(:root[data-theme="dark"]) .app .footer .tag{ color:var(--fb-amber); }
+  :where(:root[data-theme="dark"]) .app .footer a{ color:#b9aab3; }
+  :where(:root[data-theme="dark"]) .app .pad button, :where(:root[data-theme="dark"]) .app .up, :where(:root[data-theme="dark"]) .app .left, :where(:root[data-theme="dark"]) .app .down, :where(:root[data-theme="dark"]) .app .right{ background:rgba(255,255,255,.13); color:#f4eef2; box-shadow:none; }
+  :where(:root[data-theme="dark"]) canvas#game, :where(:root[data-theme="dark"]) canvas{ box-shadow: 0 0 0 2px rgba(242,160,61,.5), 0 0 0 9px #161119, 0 0 0 10px rgba(0,0,0,.5), 0 16px 34px -8px rgba(0,0,0,.6), 0 0 64px -10px rgba(242,160,61,.32); }
+
+</style>
+<script id="fb-theme">
+/* FINNBOTS NIGHT MODE v1 (2026-10-17) — injected as the fb-theme script at the END of <head>,
+   so the saved choice is on <html> before the first paint (no light flash in night mode).
+   Source of truth: factory/templates/theme-switch.js; applied by apply-brand.js; verify-game
+   pins every game's copy to this file byte for byte. Never hand-edit a game's copy.
+   The device's own light/dark setting applies until the player flips the switch; the choice is
+   remembered per game (localStorage 'fb-theme'). Without this script the switch stays hidden and
+   the device setting still applies — the brand layer's dark theme does not depend on it.
+   FIT: many topbars are exactly full on a phone, so the switch must never push a game control
+   off-screen (it did, on 15 games, in the first pilot). After layout it shows each switch,
+   measures its bar, and hides the switch on THIS screen if the bar now overflows; re-checked
+   on resize. Where it is hidden, the device's own light/dark setting still applies. */
+(function(){
+  var root=document.documentElement, KEY='fb-theme';
+  root.classList.add('fb-js');
+  try{ var t=localStorage.getItem(KEY); if(t==='light'||t==='dark') root.setAttribute('data-theme',t); }catch(e){}
+  var mq=window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function effective(){ return root.getAttribute('data-theme') || (mq && mq.matches ? 'dark' : 'light'); }
+  function paint(){
+    var dark=effective()==='dark', b=document.querySelectorAll('.fb-theme');
+    for(var i=0;i<b.length;i++){ b[i].setAttribute('aria-checked', dark?'true':'false'); b[i].title = dark ? 'Switch to day mode' : 'Switch to night mode'; }
+  }
+  function fit(){
+    var b=document.querySelectorAll('.fb-theme');
+    for(var i=0;i<b.length;i++){
+      var bar=b[i].parentElement; b[i].style.display='';
+      if(bar && bar.scrollWidth > bar.clientWidth + 1) b[i].style.display='none';
+    }
+  }
+  var fitQueued=false;
+  function refit(){ if(fitQueued) return; fitQueued=true; requestAnimationFrame(function(){ fitQueued=false; fit(); }); }
+  function wire(){
+    var b=document.querySelectorAll('.fb-theme');
+    for(var i=0;i<b.length;i++) b[i].addEventListener('click', function(){
+      var next = effective()==='dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try{ localStorage.setItem(KEY, next); }catch(e){}
+      paint();
+    });
+    paint(); fit();
+    window.addEventListener('resize', refit);
+    window.addEventListener('load', fit);          // fonts and the seed badge can widen the bar after DOMContentLoaded
+    setTimeout(fit, 1500);
+  }
+  if(mq){ if(mq.addEventListener) mq.addEventListener('change', paint); else if(mq.addListener) mq.addListener(paint); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+</script>
 <style id="fb-outro-css">
 /* ==========================================================================
    FinnBots OUTRO LAYER — the ending screen.  Founder, 2026-10-02, verbatim:
@@ -738,7 +839,7 @@ canvas{ touch-action:none; }
   color:inherit; opacity:.6; margin:0 0 2px; text-align:center; }
 .fb-outro-win .fb-outro-kicker{ color:var(--amber,#f2a03d); opacity:1; }
 
-/* ---- 3. the hero. Founder, 2026-09-25: "the hero needs to be Bot 106" ---
+/* ---- 3. the hero — Bot 2969, the project's main character (Founder, 2026-10-17) ---
    He is the one who just played the run, so he is the one on the ending
    screen: lit and lifted on a clear, dimmed and tilted on a loss. */
 .fb-outro-hero{ display:block; margin:6px auto 8px; width:76px; height:76px;
@@ -889,7 +990,7 @@ canvas{ touch-action:none; }
 <body>
   <div class="wrap">
     <header class="topbar">
-      <!--fb:pill--><a class="fb-mark" href="https://games.finnstergram.com" aria-label="FinnBots — more games"><svg class="fb-bot" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><path d="M14 5.4V3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="2" r="1.85" fill="var(--fb-amber)"/><rect x="1" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="24.4" y="11" width="2.6" height="6" rx="1.3" fill="currentColor"/><rect x="3.6" y="5" width="20.8" height="18" rx="5.5" fill="currentColor"/><rect x="6.6" y="8.6" width="14.8" height="9.4" rx="2.6" fill="var(--fb-screen)"/><circle cx="10.7" cy="13.3" r="1.9" fill="var(--fb-amber)"/><circle cx="17.3" cy="13.3" r="1.9" fill="var(--fb-amber)"/></svg><span class="fb-word">FINN<i>BOTS</i></span></a><!--/fb-->
+      <!--fb:pill--><a class="fb-mark" href="https://games.finnstergram.com" aria-label="FinnBots — more games"><svg class="fb-bot" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7 1h2v2H7zM2 3h12v1H2zM1 4h14v9H1zM2 13h12v1H2zM0 7h1v3H0zM15 7h1v3h-1z"/><path fill="var(--fb-amber)" d="M7 0h2v1H7z"/><path fill="var(--fb-screen)" d="M2 5h12v7H2z"/><path fill="var(--fb-face,#ff4fd8)" d="M4 6h2v1H4zM3 7h1v2H3zM6 7h1v2H6zM10 6h2v1h-2zM9 7h1v2H9zM12 7h1v2h-1zM4 10h1v1H4zM11 10h1v1h-1zM5 11h6v1H5z"/></svg><span class="fb-word">FINN<i>BOTS</i></span></a><button class="fb-theme" type="button" role="switch" aria-checked="false" aria-label="Night mode"><span class="fbt-track" aria-hidden="true"><span class="fbt-thumb"><svg class="fbt-sun" viewBox="0 0 7 7" shape-rendering="crispEdges"><path fill="#e8891c" d="M2 2h3v3H2zM3 0h1v1H3zM3 6h1v1H3zM0 3h1v1H0zM6 3h1v1H6zM1 1h1v1H1zM5 1h1v1H5zM1 5h1v1H1zM5 5h1v1H5z"/></svg><svg class="fbt-moon" viewBox="0 0 7 7" shape-rendering="crispEdges"><path fill="#3d3f9e" d="M2 0h3v1H2zM1 1h2v1H1zM0 2h2v3H0zM1 5h2v1H1zM2 6h3v1H2zM4 5h2v1H4z"/></svg></span></span></button><!--/fb-->
       <h1 class="title">WING 106</h1>
       <button class="iconbtn" id="restartBtn" aria-label="Restart" title="Restart (R)">⟲</button>
       <button class="iconbtn" id="infoBtn" aria-label="How to play">ⓘ</button>
@@ -2348,13 +2449,13 @@ if(!HEADLESS){
     place();
 
     var hero = q('.fb-outro-hero');
-    /* The hero is the real Bot 106 PNG every game already ships (Founder,
-       2026-09-25). Shown only once the browser confirms it decoded, so a game
-       without the asset simply has no hero rather than a broken image. */
+    /* The hero is the real Bot 2969 PNG every game ships (Founder, 2026-10-17: the
+       project's main character). Shown only once the browser confirms it decoded, so a
+       game without the asset simply has no hero rather than a broken image. */
     try{
       hero.addEventListener('load', function(){ hero.hidden = false; });
       hero.addEventListener('error', function(){ hero.hidden = true; });
-      hero.src = 'assets/hero/bot-106.png';
+      hero.src = 'assets/hero/bot-2969.png';
     }catch(e){}
 
     /* ---- the count-up ---------------------------------------------------- */
@@ -2474,8 +2575,8 @@ if(!HEADLESS){
       if(box.parentNode === card) document.body.classList.add('fb-outro-on');
       box.classList.remove('fb-outro-win','fb-outro-end');
       box.classList.add(win ? 'fb-outro-win' : 'fb-outro-end');
-      q('.fb-outro-kicker').textContent = win ? 'Shift complete · Bot 106 made it out'
-                                              : 'Shift ended · Bot 106 powers down';
+      q('.fb-outro-kicker').textContent = win ? 'Shift complete · Bot 2969 made it out'
+                                              : 'Shift ended · Bot 2969 powers down';
       var rows = harvest(), ul = q('.fb-outro-tally');
       ul.innerHTML = '';
       for(var i=0;i<rows.length;i++){
