@@ -2,8 +2,9 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>WING 106 — Leaderboard</title>
+<title>WINGBOT — Leaderboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -49,9 +50,9 @@
 <body>
   <div class="wrap">
     <header class="topbar">
-      <img class="avatar" src="https://arweave.net/_cPSCheRvzVBlZK7QwM-3nXtteMdBbUn-zJhbGRlMmo/106.png" alt="" onerror="this.style.visibility='hidden'">
+      <img class="avatar" src="https://arweave.net/_cPSCheRvzVBlZK7QwM-3nXtteMdBbUn-zJhbGRlMmo/2969.png" alt="" onerror="this.style.visibility='hidden'">
       <span class="pill">BOT GAMES</span>
-      <h1 class="title">WING 106</h1>
+      <h1 class="title">WINGBOT</h1>
     </header>
 
     <div class="note"><b>A fun ranking — not verified.</b> Scores are recorded, not replay-checked. Ranked by the game's headline metric, fastest time breaks a tie. Bot holders score ×1.5.</div>
@@ -67,7 +68,7 @@
     <footer class="foot">
       <div class="tag">a FinnBots game</div>
       <div class="links">
-        <a href="https://wing.finnstergram.com/">▶ Play WING 106</a>·
+        <a href="https://wing.finnstergram.com/">▶ Play WINGBOT</a>·
         <a href="https://magiceden.io/marketplace/finnbot" target="_blank" rel="noopener">Buy a Bot</a>·
         <a href="https://games.finnstergram.com/" target="_blank" rel="noopener">More games</a>
       </div>
@@ -83,7 +84,7 @@
    verify. Columns shown: Player, the *_adjusted metric (rank key), any other
    numeric fields, and Time. */
 var CSV = 'leaderboard_wing.csv';          // scanner-written CSV, served beside this page
-var GAME = 'WING 106';
+var GAME = 'WINGBOT';
 
 function parseCSV(text){
   var lines=text.replace(/\r/g,'').split('\n').filter(function(l){return l.length;});
