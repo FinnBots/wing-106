@@ -1111,6 +1111,199 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
 
 <script>
 "use strict";
+/* fb-foes:begin — the ROGUES, the shared FinnBots enemy cast.
+   GENERATED from factory/templates/foes-layer.js by apply-foes.js. Never hand-edit a
+   game's copy: edit the template and re-run apply-foes.js across the roster.
+   House style (every rogue, every game): a crisp dark keyline, a dark VISOR with two
+   RED glowing eyes, a jagged grin, a pink-tipped antenna where it has one. Bot 2969's
+   eyes are big and white; a rogue's are red, so hero and enemy never read alike.
+   FBFoes.draw(ctx, kind, cx, cy, width, {c, f, dir, look, state, alpha})
+     c      colourway name (FBFoes.ways) or {b,h,s} hex       f    animation frame 0|1
+     dir    -1 mirrors the sprite                             look {x,y} eyes shift -1..1
+     state  'scared' | 'flash' | 'eyes' (visor only)          alpha  0..1
+   Pure canvas calls, no DOM at load, so the headless gates run it like any engine code. */
+var FBFoes = (function(){
+  var FIX = { k:'#0b0713', v:'#170c1c', e:'#ff3355', g:'#ffd6dc', w:'#fdf3e7', m:'#9aa3b5',
+              n:'#4b5366', p:'#ff7ac8', o:'#f2a03d', y:'#ffe066', f:'#ff5a2a' };
+  var WAYS = {
+    red:['#e8434f','#ff8f95','#8e1f2c'],    pink:['#ff6fb5','#ffb6da','#a3336d'],
+    cyan:['#34cfe0','#a6f3fb','#19717d'],   orange:['#ff9a3c','#ffd09a','#a3521a'],
+    teal:['#3fb6b0','#8fe8e2','#1f6b66'],   gold:['#f5c542','#fff0a0','#a3741a'],
+    purple:['#9b5de5','#d0b0ff','#5a2d8c'], green:['#4cc764','#b2f2bd','#237a35'],
+    mint:['#6fe0c0','#c8fff0','#2a8a72'],   blue:['#3a3af7','#8a8aff','#22227a'],
+    white:['#fdf3e7','#ffffff','#c9bfb4'],  steel:['#8a93a6','#c9d0dc','#4b5366'],
+    rust:['#b5562d','#e58a5c','#6b2a12'],   lime:['#9fd14a','#d8f59a','#5a7a1e'],
+    plum:['#b3489a','#e08ad0','#6a1f5a']
+  };
+  /* Sprite maps. Letters: k keyline · b/h/s body, highlight, shade (the colourway) ·
+     v visor · e eye · g eye glint · w teeth · m/n light/dark metal · p pink tip ·
+     o amber · y yellow · f flame · '.' clear. Frame 1 lists only the rows it changes. */
+  var SPR = {
+    /* GLITCH — hover chaser: dome, visor, grin, three thruster jets */
+    glitch:{ rows:[
+      '.......pp.......','.......nn.......','....kkkkkkkk....','...khhhhhhhhk...',
+      '..khhbbbbbbbbk..','.khbbbbbbbbbbsk.','.kbvvvvvvvvvvsk.','.kbvgevvvvgevsk.',
+      '.kbveevvvveevsk.','.kbvvvvvvvvvvsk.','.kbbwkwkwkwkbsk.','.kbbbbbbbbbbbsk.',
+      '.kssssssssssssk.','..kok..kok..kok.','...f....f....f..','................'],
+      f1:{ 14:'...y....y....y..', 15:'...f....f....f..' } },
+    /* ROLLER — ball bot riding one tread */
+    roller:{ rows:[
+      '.......p........','.....kkkkkk.....','...kkhhhhhhkk...','..khhbbbbbbbbk..',
+      '.khbbbbbbbbbbsk.','.kbvvvvvvvvvvsk.','.kbvgevvvvgevsk.','.kbveevvvveevsk.',
+      '.kbvvvvvvvvvvsk.','.kbbbbbbbbbbbsk.','.ksbbbbbbbbbssk.','..kssssssssssk..',
+      '...knnnnnnnnk...','..knmnmnmnmnmk..','...knnnnnnnnk...','....kkkkkkkk....'],
+      f1:{ 13:'..kmnmnmnmnmnk..' } },
+    /* TORCH — squat cyclops with a burner nozzle (faces right) */
+    torch:{ rows:[
+      '....p...........','....n...........','..kkkkkkkk......','.khhhhhhhhk.....',
+      '.khbbbbbbbsk....','.kbvvvvvvbskkk..','.kbvvgeevbsnnnk.','.kbvveeevbsmmmok',
+      '.kbvvvvvvbsnnnk.','.kbwkwkwkbskkk..','.kbbbbbbbbsk....','.kssssssssk.....',
+      '..knk..knk......','..knk..knk......','.kkkk.kkkk......','................'],
+      f1:{ 13:'.knk....knk.....', 14:'kkkk....kkkk....' } },
+    /* SPRING — a head on a stacked coil (hops) */
+    spring:{ rows:[
+      '.......pp.......','.......nn.......','....kkkkkkkk....','...khhhhhhhhk...',
+      '..khbbbbbbbbsk..','..kbvvvvvvvvsk..','..kbvgevvgevsk..','..kbveevveevsk..',
+      '..kbbwkwkwkwsk..','...kssssssssk...','.....knnnnk.....','....khhhhhhk....',
+      '...kssssssssk...','..khhhhhhhhhhk..','...kssssssssk...','..khhhhhhhhhhk..',
+      '...kssssssssk...','..khhhhhhhhhhk..','...kssssssssk...','..knnnnnnnnnnk..',
+      '..kkkkkkkkkkkk..'],
+      f1:{ 0:'......pp........', 1:'.......n........' } },
+    /* POD — an egg capsule, cracked, something peering out */
+    pod:{ rows:[
+      '................','......kkkk......','....kkhhhhkk....','...khhhbbbbbk...',
+      '...khhbbbbbbk...','..khbbbbbbbbsk..','..kbbbkbbbbbsk..','..kbbkbkbbkbsk..',
+      '..kbkbbbkkbbsk..','..kbbbbbbbbbsk..','..kbbveevbbbsk..','..ksbbbbbbbssk..',
+      '...kssbbbbssk...','....kksssskk....','......kkkk......','................'],
+      f1:{ 10:'..kbbvvvvbbbsk..' } },
+    /* GREMLIN — small prankster, two antennae, big grin */
+    gremlin:{ rows:[
+      '.p............p.','..n..........n..','...n..kkkk..n...','....kkhhhhkk....',
+      '...khhbbbbbbk...','..khbbbbbbbbsk..','.kbbvvvvvvvvbsk.','.kbvgevvvvgevsk.',
+      '.kbveevvvveevsk.','.kbbvvvvvvvvbsk.','.kbbbwwwwwwbbsk.','.kbbbkwkwkwbbsk.',
+      '..kssssssssssk..','...knk....knk...','..kknk....knkk..','................'],
+      f1:{ 13:'....knk..knk....', 14:'...kknk..knkk...' } },
+    /* CRAWLER — six-legged rust beetle (faces right) */
+    crawler:{ rows:[
+      '.....kkkkkk.....','...kkhhhhhhkk...','..khbbbbbbbbhk..','.kshbbbbbsbbbbk.',
+      '.ksbbbbbsbbbbbk.','kssbbbbbsbbvvvvk','kssbbbbbsbbvvegk','ksssssssssssvvvk',
+      '.kkkkkkkkkkkkkk.','.m.m..m..m..m.m.','m.m...m..m...m.m','................'],
+      f1:{ 9:'..m.m.m..m.m.m..', 10:'.m.m..m..m..m.m.' } },
+    /* BUZZER — rotor drone, wings up / wings down */
+    buzzer:{ rows:[
+      'kk............kk','khk..........khk','.khk...pp...khk.','..khk..nn..khk..',
+      '...kkkkkkkkkk...','...khhhhhhhhk...','...kbvvvvvvsk...','...kbgevvgesk...',
+      '...kbeevveesk...','...kbvvvvvvsk...','...kbwkwkwksk...','....kssssssk....',
+      '.....k.kk.k.....','................'],
+      f1:{ 0:'................', 1:'................', 2:'.......pp.......', 3:'.......nn.......',
+           6:'khkkbvvvvvvskkhk', 7:'.khkbgevvgeskhk.', 8:'..kkbeevveeskk..' } },
+    /* MOTH — escort with broad flapping wings */
+    moth:{ rows:[
+      '................','.kkk...pp...kkk.','khhhk..nn..khhhk','khbbhkkkkkkhbbhk',
+      'kbbbkhhhhhhkbbbk','kbbskbvvvvskbbsk','kbsskgevvgeksbsk','.ksskeevveekssk.',
+      '..kkkwkwkwkkkk..','....kssssssk....','.....k.kk.k.....','................'],
+      f1:{ 1:'.......pp.......', 2:'.kkk...nn...kkk.', 3:'khhhkkkkkkkkhhhk' } },
+    /* BRUTE — the boss: wide screen-face, shoulder pods, twin thrusters */
+    brute:{ rows:[
+      '.....p............p.....','.....n............n.....','......n..........n......',
+      '...kkkkkkkkkkkkkkkkkk...','..khhhhhhhhhhhhhhhhhhk..','..khbbbbbbbbbbbbbbbbsk..',
+      'kkkbvvvvvvvvvvvvvvvvskkk','kmkbvvggeevvvvggeevvskmk','kmkbvveeeevvvveeeevvskmk',
+      'kmkbvveeeevvvveeeevvskmk','kmkbvvvvvvvvvvvvvvvvskmk','kkkbbwkwkwkwkwkwkwkbskkk',
+      '...kbbbbbbbbbbbbbbbsk...','...kssssssssssssssssk...','....kkkkkkkkkkkkkkkk....',
+      '......knnk....knnk......','.......oo......oo.......','.......ff......ff.......'],
+      f1:{ 16:'.......yy......yy.......', 17:'........f......f........' } },
+    /* SPIDER — eight-legged walker */
+    spider:{ rows:[
+      '....kkkkkkkk....','...khhhhhhhhk...','s.kbvgevvgevsk.s','sskbveevveevskss',
+      '..kbbwkwkwkbsk..','ssskkssssssskkss','s..s.s....s.s..s','s..s..s..s..s..s',
+      '..s...s..s...s..','................'],
+      f1:{ 6:'.s.s.s....s.s.s.', 7:'s...s.s..s.s...s', 8:'s....s....s....s' } },
+    /* STINGER — tail-curled scuttler (faces right) */
+    stinger:{ rows:[
+      '...kkk..........','..koyok.........','..kk.kk.........','.kbk............',
+      '.kbk.....kkkkkk.','.kbkkkkkkhhhhhk.','..kbbbbbbbbvgek.','..ksbbbbbbbveekk',
+      '...ksssssssssk.k','...knknknknk.kk.','....n.n.n.n.....','................'],
+      f1:{ 10:'...n.n.n.n......' } },
+    /* LINK — one armoured module of a chain bot; LINKHEAD leads it */
+    link:{ rows:[
+      '................','.....kkkkkk.....','...kkhhhhhhkk...','..khhbbbbbbbbk..',
+      '.khbbbbbbbbbbsk.','.khbbbmmmmbbbsk.','.kbbbmnnnnmbbsk.','.kbbbmnoonmbbsk.',
+      '.kbbbmnnnnmbbsk.','.kbbbbmmmmbbbsk.','.ksbbbbbbbbbbsk.','..kssssssssssk..',
+      '...kksssssskk...','.....kkkkkk.....','...n........n...','................'],
+      f1:{ 14:'..n..........n..' } },
+    linkhead:{ rows:[
+      '....p......p....','.....n....n.....','...kkkkkkkkkk...','..khhhhhhhhhhk..',
+      '.khbbbbbbbbbbsk.','.kbvvvvvvvvvvsk.','.kbvgevvvvgevsk.','.kbveevvvveevsk.',
+      '.kbvvvvvvvvvvsk.','.kbbwkwkwkwkbsk.','.ksbbbbbbbbbbsk.','..kssssssssssk..',
+      '.kok........kok.','..k..........k..','................','................'],
+      f1:{ 12:'..kok......kok..', 13:'...k........k...' } }
+  };
+  var ORDER = ['glitch','roller','torch','spring','pod','gremlin','crawler','buzzer','moth',
+               'brute','spider','stinger','link','linkhead'];
+  /* Compile a map once into merged rects: runs of one letter in a row, then identical runs
+     merged DOWN the rows. Fewer fills, and each fill as large as the art allows. Eyes are a
+     separate layer over a visor that is solid underneath, so a look offset leaves no hole. */
+  var cache = {};
+  function compile(kind, f){
+    var key = kind + f; if(cache[key]) return cache[key];
+    var d = SPR[kind], rows = d.rows.slice(), i;
+    if(f && d.f1) for(i in d.f1) rows[+i] = d.f1[i];
+    var W = rows[0].length, base = [], eyes = [];
+    function runs(row, y, pick, out, live){
+      var x = 0, next = {};
+      while(x < W){
+        var c = pick(row.charAt(x)); if(c === '.'){ x++; continue; }
+        var x0 = x; while(x < W && pick(row.charAt(x)) === c) x++;
+        var id = x0 + ',' + (x - x0) + ',' + c, r = live[id];
+        if(r){ r[3]++; } else { r = [x0, y, x - x0, 1, c]; out.push(r); }
+        next[id] = r;
+      }
+      return next;
+    }
+    var lb = {}, le = {};
+    for(var y = 0; y < rows.length; y++){
+      var row = rows[y]; while(row.length < W) row += '.';
+      lb = runs(row, y, function(c){ return (c === 'e' || c === 'g') ? 'v' : c; }, base, lb);
+      le = runs(row, y, function(c){ return (c === 'e' || c === 'g') ? c : '.'; }, eyes, le);
+    }
+    return (cache[key] = { W:W, H:rows.length, base:base, eyes:eyes });
+  }
+  var FACE = { torch:1, crawler:1, stinger:1 };      // drawn facing right
+  function drawFoe(ctx, kind, cx, cy, size, o){
+    if(!SPR[kind] || !(size > 0)) return;
+    o = o || {};
+    var sp = compile(kind, o.f ? 1 : 0), u = size / sp.W, st = o.state;
+    var way = st === 'scared' ? WAYS.blue : st === 'flash' ? WAYS.white
+            : (typeof o.c === 'string' ? WAYS[o.c] : o.c ? [o.c.b, o.c.h, o.c.s] : null) || WAYS.red;
+    var eye = st === 'scared' ? FIX.w : FIX.e, glint = st === 'scared' ? FIX.w : FIX.g;
+    var flip = (o.dir || 1) < 0, x0 = cx - size / 2, y0 = cy - sp.H * u / 2, k = 1;
+    if(ctx.getTransform){ try{ k = Math.abs(ctx.getTransform().a) || 1; }catch(e){} }
+    function sn(v){ return Math.round(v * k) / k; }
+    function fill(r, col, dx, dy){
+      var cxl = flip ? sp.W - r[0] - r[2] : r[0];
+      var X = sn(x0 + (cxl + dx) * u), Y = sn(y0 + (r[1] + dy) * u);
+      var X2 = sn(x0 + (cxl + r[2] + dx) * u), Y2 = sn(y0 + (r[1] + r[3] + dy) * u);
+      ctx.fillStyle = col; ctx.fillRect(X, Y, Math.max(X2 - X, 1 / k), Math.max(Y2 - Y, 1 / k));
+    }
+    var pa = ctx.globalAlpha; if(o.alpha !== undefined) ctx.globalAlpha = pa * o.alpha;
+    var i, r, c;
+    for(i = 0; i < sp.base.length; i++){
+      r = sp.base[i]; c = r[4];
+      if(st === 'eyes' && c !== 'v') continue;
+      fill(r, c === 'b' ? way[0] : c === 'h' ? way[1] : c === 's' ? way[2] : FIX[c], 0, 0);
+    }
+    var lx = o.look ? Math.max(-1, Math.min(1, Math.round(o.look.x || 0))) : 0;   // screen space
+    var ly = o.look ? Math.max(-1, Math.min(1, Math.round(o.look.y || 0))) : 0;
+    for(i = 0; i < sp.eyes.length; i++){
+      r = sp.eyes[i]; fill(r, r[4] === 'g' ? glint : eye, lx, ly);
+    }
+    ctx.globalAlpha = pa;
+  }
+  return { draw:drawFoe, kinds:ORDER, ways:WAYS,
+           aspect:function(kind){ var s = compile(kind, 0); return s.H / s.W; },
+           maps:SPR, faces:FACE };
+})();
+/* fb-foes:end */
 /* ==========================================================================
    WINGBOT — FinnBots.  ENGINE (Free gameplay).
    FinnBots-original take on the the formation-shooter original (1981) arcade loop:
@@ -1592,39 +1785,13 @@ if(!HEADLESS){
     px(x-7,y+2,2,2,cdk); px(x+6,y+2,2,2,cdk);                   // wingtips
     px(x-2,y+3,4,2,'#ffb84d');                                  // thruster
   }
-  const OUT='#0b0713';   // shared dark outline — every FinnBot gets a crisp edge
-  // TICK — small gold drone with a pink screen-face and flapping wings.
-  function drawTick(e){ const x=Math.round(e.x), y=Math.round(e.y), fr=Math.floor(s.tMs/130)%2, wy=y-1+(fr?1:-1);
-    px(x-8,wy,3,2,OUT); px(x-7,wy,2,2,C.tick2); px(x+6,wy,3,2,OUT); px(x+6,wy,2,2,C.tick2);   // wings
-    px(x-5,y-4,11,10,OUT);                 // outline
-    px(x-4,y-3,9,8,C.tick1);               // base
-    px(x-4,y-3,9,1,'#ffe98a');             // top highlight
-    px(x-4,y+4,9,1,'#d98a2e');             // bottom shadow
-    px(x-3,y-1,7,4,'#2a0f1e');             // screen
-    px(x-2,y,1,2,C.tick2); px(x+2,y,1,2,C.tick2); px(x-1,y+2,3,1,C.tick2);   // eyes + mouth
-    px(x-3,y+5,1,1,OUT); px(x+2,y+5,1,1,OUT); }                              // feet
-  // DOME — teal escort with wide flapping wings and a gold screen-face.
-  function drawDome(e){ const x=Math.round(e.x), y=Math.round(e.y), fr=Math.floor(s.tMs/120)%2, wy=y+(fr?1:-1);
-    px(x-9,wy,4,3,OUT); px(x-9,wy,4,1,'#b8fff7'); px(x-8,wy+1,3,2,C.dome);   // left wing
-    px(x+6,wy,4,3,OUT); px(x+6,wy,4,1,'#b8fff7'); px(x+6,wy+1,3,2,C.dome);   // right wing
-    px(x-5,y-5,11,11,OUT);                 // outline
-    px(x-4,y-4,9,9,C.dome);                // base
-    px(x-4,y-4,9,2,'#b8fff7');             // domed highlight
-    px(x-4,y+4,9,1,C.domeDk);              // shadow
-    px(x-3,y-1,7,4,'#07242a');             // screen
-    px(x-2,y,1,2,'#ffe08a'); px(x+2,y,1,2,'#ffe08a'); px(x-1,y+2,3,1,'#ffe08a');
-    px(x-2,y+5,1,1,OUT); px(x+2,y+5,1,1,OUT); }
-  // BOSS — big screen-bot with antennae + shoulder pods; palette-swaps on hit 1.
-  function drawBoss(e){ const x=Math.round(e.x), y=Math.round(e.y), hit=e.colorHit;
-    const base=hit?C.boss2:C.boss1, hi=hit?'#ffc0ec':'#b6ffcf', sh=hit?'#a02a7a':'#2a8a52', eye=hit?'#ffd0f0':'#c9ffe0';
-    px(x-6,y-11,1,4,OUT); px(x+5,y-11,1,4,OUT); px(x-7,y-12,3,2,base); px(x+4,y-12,3,2,base);   // antennae
-    px(x-10,y-8,21,17,OUT);                // outline
-    px(x-9,y-7,19,15,base);                // base
-    px(x-9,y-7,19,2,hi);                   // top highlight
-    px(x-9,y+6,19,2,sh);                   // bottom shadow
-    px(x-11,y-2,2,6,OUT); px(x-10,y-1,1,4,sh); px(x+9,y-2,2,6,OUT); px(x+9,y-1,1,4,sh);         // shoulder pods
-    px(x-7,y-5,15,8,'#07130b');            // screen
-    px(x-4,y-3,3,3,eye); px(x+1,y-3,3,3,eye); px(x-3,y+1,6,1,eye);   // eyes + mouth
+  /* The swarm is ROGUES from the shared cast (factory/templates/foes-layer.js), drawn at
+     the footprint the old sprites had: TICK = BUZZER 17px, DOME = MOTH 19px, BOSS = BRUTE
+     24px, which turns pink after its first hit. */
+  function drawTick(e){ FBFoes.draw(ctx, 'buzzer', Math.round(e.x), Math.round(e.y), 17, { c:'gold', f:Math.floor(s.tMs/130)%2 }); }
+  function drawDome(e){ FBFoes.draw(ctx, 'moth', Math.round(e.x), Math.round(e.y), 19, { c:'teal', f:Math.floor(s.tMs/120)%2 }); }
+  function drawBoss(e){ const x=Math.round(e.x), y=Math.round(e.y);
+    FBFoes.draw(ctx, 'brute', x, y-1, 24, { c:e.colorHit?'pink':'green', f:Math.floor(s.tMs/110)%2 });
     if(e.captive) drawCaptive(x, y+14);
   }
   function drawCaptive(x,y){ drawShip(x,y,C.red,'#a02020',0.9); }
