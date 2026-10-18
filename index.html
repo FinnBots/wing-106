@@ -1117,10 +1117,17 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
    House style (every rogue, every game): a crisp dark keyline, a dark VISOR with two
    RED glowing eyes, a jagged grin, a pink-tipped antenna where it has one. Bot 2969's
    eyes are big and white; a rogue's are red, so hero and enemy never read alike.
-   FBFoes.draw(ctx, kind, cx, cy, width, {c, f, dir, look, state, alpha})
+   FBFoes.draw(ctx, kind, cx, cy, width, {c, f, dir, look, state, alpha, v})
      c      colourway name (FBFoes.ways) or {b,h,s} hex       f    animation frame 0|1
-     dir    -1 mirrors the sprite                             look {x,y} eyes shift -1..1
+     dir    -1 mirrors the sprite                             look {x,y} eyes shift -1..1 (Rogues)
      state  'scared' | 'flash' | 'eyes' (visor only)          alpha  0..1
+     v      a variant palette, where the kind has one (clanker: 'hunter', 'hunterBlink')
+   Two families share one API (FBFoes.kinds lists both):
+     ROGUES  drawn in the house palette (the letters below), eyes on their own layer so they can look.
+     CLASSICS the enemies of Mr Bot, RIVETBOT and BubbleBot (Founder 2026-10-18: "take the enemies from
+             Mr Bot, RIVETBOT and BubbleBot into the cast of enemies to be reused on future games"),
+             extracted from those games' own sprite grids, pixel for pixel, each with its OWN palette.
+             A colourway recolours the letters its `way` names; everything else keeps its original colour.
    Pure canvas calls, no DOM at load, so the headless gates run it like any engine code. */
 var FBFoes = (function(){
   var FIX = { k:'#0b0713', v:'#170c1c', e:'#ff3355', g:'#ffd6dc', w:'#fdf3e7', m:'#9aa3b5',
@@ -1236,10 +1243,147 @@ var FBFoes = (function(){
       '.khbbbbbbbbbbsk.','.kbvvvvvvvvvvsk.','.kbvgevvvvgevsk.','.kbveevvvveevsk.',
       '.kbvvvvvvvvvvsk.','.kbbwkwkwkwkbsk.','.ksbbbbbbbbbbsk.','..kssssssssssk..',
       '.kok........kok.','..k..........k..','................','................'],
-      f1:{ 12:'..kok......kok..', 13:'...k........k...' } }
+      f1:{ 12:'..kok......kok..', 13:'...k........k...' } },
+    /* ---------- CLASSICS: extracted from the games' own grids by the factory (2026-10-18) ---------- */
+    /* TICKER — Mr Bot: clockwork wind-up beetle, its key turns */
+    ticker:{ rows:[
+      '....KKK..KKK....','....KyyKKyyK....','.....KKyyKK.....','......KyyK......',
+      '....KKKKKKKK....','..KKccccccccKK..','.KccWWWWWWWWccK.','.KcWKWWKKWWKWcK.',
+      'KcWWWKWWWWKWWWcK','KcWWKrKWWKrKWWcK','KcWWKKKWWKKKWWcK','KcWWWWWWWWWWWWcK',
+      '.KcWWKWKWKWKWcK.','.KcWWWKWKWKWWcK.','.KccWWWWWWWWccK.','..KKccccccccKK..',
+      '...KcK....KcK...','..KKKK....KKKK..'],
+      f1:{ 0:'......KKKK......', 1:'......KyyK......', 2:'......KyyK......', 16:'....KcK..KcK....', 17:'...KKKK..KKKK...' },
+      pal:{ K:'#151021', c:'#22a9b6', W:'#f3efe2', r:'#ff3d55', y:'#ffcf3a' },
+      way:{ b:'c' } },
+    /* MAGNET — Mr Bot: horseshoe magnet walking on its poles */
+    magnet:{ rows:[
+      '....KKKKKKKK....','..KKRRRRRRRRKK..','.KRhhRRRRRRRRRK.','.KRRWWRRRRWWRRK.',
+      'KRRRWkRRRRkWRRRK','KRRRRRKKKKRRRRRK','KRRRKKKKKKKKRRRK','KRRRK......KRRRK',
+      'KRRRK......KRRRK','KRRRK......KRRRK','KRRRK......KRRRK','KKKKK......KRRRK',
+      'KsssK......KKKKK','KsssK......KsssK','KKKKK......KsssK','...........KKKKK'],
+      f1:{ 11:'KRRRK......KKKKK', 12:'KKKKK......KsssK', 14:'KsssK......KKKKK', 15:'KKKKK...........' },
+      pal:{ K:'#151021', R:'#e8413c', h:'#ff9c8a', W:'#f6f9ff', k:'#151021', s:'#dfe5ee' },
+      way:{ b:'R', h:'h' } },
+    /* SPARKER — Mr Bot: crackling short-circuit gremlin */
+    sparker:{ rows:[
+      '...K....K....K..','....K..KPK..K...','.....KKPPPKK....','..K.KPPPPPPPK.K.',
+      '...KPPYYYYYPPK..','.KKPPYYYYYYYPPKK','..KPYYWWYYWWYPK.','..KPYYWKYYWKYPK.',
+      'KKKPYYYYYYYYYPKK','..KPYYKYKYKYYPK.','...KPYYYYYYYPK..','.KK.KPPPPPPPK.KK',
+      '....KKPPPPPKK...','...K..KKKKK..K..','.....KK..KK.....','....KK....KK....'],
+      f1:{ 15:'......KK..KK....' },
+      pal:{ K:'#151021', P:'#8e5cf0', Y:'#ffe14d', W:'#f6f9ff' },
+      way:{ b:'P' } },
+    /* NUTTER — Mr Bot: bronze hex nut, bolt-hole mouth */
+    nutter:{ rows:[
+      '.....KKKKKK.....','....KbbbbbbK....','...KbhhbbbbbK...','..KbhbbbbbbbbK..',
+      '.KbbWWbbbbWWbbK.','.KbbWkbbbbkWbbK.','KbbbbbbbbbbbbbbK','KbbbbbKKKKbbbbbK',
+      'KbbbbKddddKbbbbK','KbbbbKdKKdKbbbbK','KbbbbbKKKKbbbbbK','.KBbbbbbbbbbbBK.',
+      '..KBBbbbbbbBBK..','...KBBBBBBBBK...','....KKKKKKKK....','....KbK..KbK....',
+      '...KKK....KKK...'],
+      f1:{ 15:'...KbK....KbK...', 16:'..KKK......KKK..' },
+      pal:{ K:'#151021', b:'#c48d3f', h:'#f4cf8f', B:'#7a5220', W:'#f6f9ff', k:'#151021', d:'#2a1606' },
+      way:{ b:'b', h:'h', s:'B' } },
+    /* RUSTLE — Mr Bot: dripping rust blob */
+    rustle:{ rows:[
+      '......KKKK......','....KKoooOKK....','...KooOOooooK...','..KoOOooooooooK.',
+      '.KooWWWooWWWoooK','.KooWKWooWKWoooK','.KoooooooooooooK','KoooooKKKKoooooK',
+      'KooooKrrrrKooooK','KoooooKKKKoooooK','.KoroooooooorooK','.KoooooooooooooK',
+      '..KooKoooKooKoK.','...KK.KoK.KK.K..','......KK........'],
+      f1:{ 13:'...KK..KK.KoK.K.', 14:'...........KK...' },
+      pal:{ K:'#151021', o:'#d9722a', O:'#ffb366', r:'#8a3a12', W:'#f6f9ff' },
+      way:{ b:'o', h:'O', s:'r' } },
+    /* CLANKER — RIVETBOT: hard-hat construction bot; v:"hunter" = red visor + beacon (patroller = mint) */
+    clanker:{ rows:[
+      '.......bb.......','.......KK.......','.......KK.......','...KKKKKKKKKK...',
+      '..KmmmmmmmmmmK..','..KmKKKKKKKKmK..','..KmKvvvveeKmK..','..KmKKKKKKKKmK..',
+      '..KMMMMMMMMMMK..','.KKKKKKKKKKKKKK.','KgKMMMMMMMMMMKgK','KgKMyMMMMMMyMKgK',
+      'KgKMMMrrrrMMMKgK','.KKMMMMMMMMMMKK.','..KKKKKKKKKKKK..','.KttttttttttttK.',
+      'KtTtTtTtTtTtTtTK','.KKKKKKKKKKKKKK.'],
+      f1:{ 16:'KTtTtTtTtTtTtTtK' },
+      pal:{ K:'#151021', m:'#ffe27a', M:'#f2b630', g:'#6b7280', y:'#151021', r:'#3a2a10', t:'#3a3f52', T:'#8b93a8', v:'#123c38', e:'#6fd8c2', b:'#6fd8c2' },
+      vars:{ hunter:{ v:'#4a0e0e', e:'#ff3b30', b:'#ff3b30' }, hunterBlink:{ v:'#4a0e0e', e:'#ff3b30', b:'#fff1c0' } },
+      way:{ b:'m', s:'M' } },
+    /* CRANE — RIVETBOT: rotor drone with a magnet claw */
+    crane:{ rows:[
+      '.....qqqqqq.....','..qqqqqqqqqqqq..','......KKKK......','.......KK.......',
+      '..KKKKKKKKKKKK..','.KbbbbbbbbbbbbK.','KbbWWWbbbbWWWbbK','KbbWkWbbbbWkWbbK',
+      'KbbWWWbbbbWWWbbK','KBbbbbbbbbbbbbBK','.KBBBBBBBBBBBBK.','..KKKKKKKKKKKK..',
+      '.......KK.......','.......KK.......','....KKKKKKKK....','....KRRRRRRK....',
+      '....KRRKKRRK....','....KssKKssK....'],
+      f1:{ 0:'....qqqqqqqq....', 1:'qqqqqq....qqqqqq' },
+      pal:{ K:'#151021', b:'#3a6ff7', B:'#2445a8', W:'#ffe3e3', k:'#ff2a3a', R:'#e8413c', s:'#dfe5ee', q:'#dce8ff' },
+      way:{ b:'b', s:'B' } },
+    /* COGBOT — BubbleBot: cog teeth */
+    cogbot:{ rows:[
+      '.......ss.......','.kkkkkksskkkkkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.khhhhhhhhhhhhk.','ssbkkkkkkkkkkbss','ssbkkwwwkkwwwbss','ssbkkwwwkkwwwbss',
+      '.kbkkwwwkkwwwbk.','.kbkkkkkkkkkkbk.','.kbkkkkkkkkkkbk.','.kbbbbbbbbbbbbk.',
+      '.kssssssssssssk.','.kssssssssssssk.','.kssssssssssssk.','.kkkkkkkkkkkkkk.'],
+      pal:{ k:'#140d12', b:'#7fe0b8', h:'#d8fff1', s:'#1d5a45', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* LOBBER — BubbleBot: lobber arms */
+    lobber:{ rows:[
+      '......ssss......','.kkkkksssskkkkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.khhhhhhhhhhhhk.','.kbkkkkkkkkkkbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.',
+      'ssbkkwwwkkwwwbss','ssbkkkkkkkkkkbss','ssbkkkkkkkkkkbss','ssbbbbbbbbbbbbss',
+      'ssssssssssssssss','.kssssssssssssk.','.kssssssssssssk.','.kkkkkkkkkkkkkk.'],
+      pal:{ k:'#140d12', b:'#f2a03d', h:'#ffd79a', s:'#6b3d10', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* PUFFER — BubbleBot: puffer fins */
+    puffer:{ rows:[
+      '...hhhhhhhhhh...','.kkhhhhhhhhhhkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.khhhhhhhhhhhhk.','.kbkkkkkkkkkkbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.',
+      '.kbkkwwwkkwwwbk.','.kbkkkkkkkkkkbk.','.kbkkkkkkkkkkbk.','.kbbbbbbbbbbbbk.',
+      '.kssssssssssssk.','.kssssssssssssk.','.kssssssssssssk.','.sssskkkkkkssss.'],
+      pal:{ k:'#140d12', b:'#5b86f7', h:'#b9cdff', s:'#1b2f6b', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* WHIRLY — BubbleBot: whirly rotor */
+    whirly:{ rows:[
+      '......hhhh......','......hhhh......','..hhhhhhhhhhhh..','.khhhhhhhhhhhhk.',
+      '.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.','.kbkkkkkkkkkkbk.',
+      '.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.','.kbkkkkkkkkkkbk.',
+      '.kbkkkkkkkkkkbk.','.kbbbbbbbbbbbbk.','.kssssssssssssk.','.kssssssssssssk.',
+      '.kssssssssssssk.','.kkkkkkkkkkkkkk.'],
+      pal:{ k:'#140d12', b:'#f06ec0', h:'#ffc2e6', s:'#6b1f4f', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* SPRINGER — BubbleBot: springer coil */
+    springer:{ rows:[
+      '.kkkkkkkkkkkkkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.kbkkkkkkkkkkbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.',
+      '.kbkkkkkkkkkkbk.','.kbkkkkkkkkkkbk.','.kbbbbbbbbbbbbk.','.kssssssssssssk.',
+      '.ksbbbbbbbbbbsk.','.ksbbbbbbbbbbsk.','.kkksssssssskkk.'],
+      pal:{ k:'#140d12', b:'#f7d84a', h:'#fff2a8', s:'#6b5a0f', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* BLAZER — BubbleBot: blazer nozzle */
+    blazer:{ rows:[
+      '......oooo......','.kkkkkooookkkkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.khhhhhhhhhhhhk.','.kbkkkkkkkkkkbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwboo',
+      '.kbkkwwwkkwwwboo','.kbkkkkkkkkkkboo','.kbkkkkkkkkkkboo','.kbbbbbbbbbbbbk.',
+      '.kssssssssssssk.','.kssssssssssssk.','.kssssssssssssk.','.kkkkkkkkkkkkkk.'],
+      pal:{ k:'#140d12', b:'#f2603d', h:'#ffb79a', s:'#6b1f10', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* CANNER — BubbleBot: canner's can */
+    canner:{ rows:[
+      '...........ssss.','.kkkkkkkkkkshhs.','.khhhhhhhhhshhs.','.khhhhhhhhhssss.',
+      '.khhhhhhhhhhhhk.','.kbkkkkkkkkkkbk.','.kbkkwwwkkwwwbk.','.kbkkwwwkkwwwbk.',
+      '.kbkkwwwkkwwwbk.','.kbkkkkkkkkkkbk.','.kbkkkkkkkkkkbk.','.kbbbbbbbbbbbbk.',
+      '.kssssssssssssk.','.kssssssssssssk.','.kssssssssssssk.','.kkkkkkkkkkkkkk.'],
+      pal:{ k:'#140d12', b:'#a06ef0', h:'#dcc2ff', s:'#3d1f6b', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } },
+    /* ZAPBOT — BubbleBot: zapper wings */
+    zapbot:{ rows:[
+      '.kkkkkkkkkkkkkk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.','.khhhhhhhhhhhhk.',
+      '.kbkkkkkkkkkkbk.','bbbkkwwwkkwwwbbb','bbbkkwwwkkwwwbbb','bbbkkwwwkkwwwbbb',
+      'bbbkkkkkkkkkkbbb','bbbkkkkkkkkkkbbb','bbbbbbbbbbbbbbbb','.kssssssssssssk.',
+      '.kssssssssssssk.','.kssssssssssssk.','.kkkksssssskkkk.'],
+      pal:{ k:'#140d12', b:'#4fd0d8', h:'#c2f6fa', s:'#12555a', w:'#fdf3e7', o:'#f2a03d' },
+      way:{ b:'b', h:'h', s:'s' } }
   };
   var ORDER = ['glitch','roller','torch','spring','pod','gremlin','crawler','buzzer','moth',
-               'brute','spider','stinger','link','linkhead'];
+               'brute','spider','stinger','link','linkhead',
+               'ticker','magnet','sparker','nutter','rustle','clanker','crane',
+               'cogbot','lobber','puffer','whirly','springer','blazer','canner','zapbot'];
+  var CLASSICS = ORDER.slice(14);
   /* Compile a map once into merged rects: runs of one letter in a row, then identical runs
      merged DOWN the rows. Fewer fills, and each fill as large as the art allows. Eyes are a
      separate layer over a visor that is solid underneath, so a look offset leaves no hole. */
@@ -1263,12 +1407,13 @@ var FBFoes = (function(){
     var lb = {}, le = {};
     for(var y = 0; y < rows.length; y++){
       var row = rows[y]; while(row.length < W) row += '.';
+      if(d.pal){ lb = runs(row, y, function(c){ return c; }, base, lb); continue; }   // a classic: one layer
       lb = runs(row, y, function(c){ return (c === 'e' || c === 'g') ? 'v' : c; }, base, lb);
       le = runs(row, y, function(c){ return (c === 'e' || c === 'g') ? c : '.'; }, eyes, le);
     }
-    return (cache[key] = { W:W, H:rows.length, base:base, eyes:eyes });
+    return (cache[key] = { W:W, H:rows.length, base:base, eyes:eyes, d:d });
   }
-  var FACE = { torch:1, crawler:1, stinger:1 };      // drawn facing right
+  var FACE = { torch:1, crawler:1, stinger:1, clanker:1, blazer:1 };      // drawn facing right
   function drawFoe(ctx, kind, cx, cy, size, o){
     if(!SPR[kind] || !(size > 0)) return;
     o = o || {};
@@ -1287,8 +1432,12 @@ var FBFoes = (function(){
     }
     var pa = ctx.globalAlpha; if(o.alpha !== undefined) ctx.globalAlpha = pa * o.alpha;
     var i, r, c;
+    var D = sp.d, own = D.pal, vp = (own && o.v && D.vars && D.vars[o.v]) || null, wm = null;
+    if(own && D.way && (o.c || st === 'scared' || st === 'flash')){
+      wm = {}; if(D.way.b) wm[D.way.b] = way[0]; if(D.way.h) wm[D.way.h] = way[1]; if(D.way.s) wm[D.way.s] = way[2]; }
     for(i = 0; i < sp.base.length; i++){
       r = sp.base[i]; c = r[4];
+      if(own){ if(st === 'eyes') continue; fill(r, (wm && wm[c]) || (vp && vp[c]) || own[c], 0, 0); continue; }
       if(st === 'eyes' && c !== 'v') continue;
       fill(r, c === 'b' ? way[0] : c === 'h' ? way[1] : c === 's' ? way[2] : FIX[c], 0, 0);
     }
@@ -1299,7 +1448,7 @@ var FBFoes = (function(){
     }
     ctx.globalAlpha = pa;
   }
-  return { draw:drawFoe, kinds:ORDER, ways:WAYS,
+  return { draw:drawFoe, kinds:ORDER, classics:CLASSICS, ways:WAYS,
            aspect:function(kind){ var s = compile(kind, 0); return s.H / s.W; },
            maps:SPR, faces:FACE };
 })();
