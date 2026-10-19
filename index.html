@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899 https://cloudflareinsights.com https://finnbots-events.mart-kin1000.workers.dev; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>WINGBOT — a FinnBots game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2994,6 +2994,119 @@ if(!HEADLESS){
                counting:box.classList.contains('fb-outro-counting') };
     };
   }catch(e){ /* an ending screen must never break a game */ }
+})();
+</script>
+<script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
+<script id="fb-analytics">
+/* ==========================================================================
+   FinnBots ANALYTICS LAYER — how the games are PLAYED, counted, never who plays.
+   Founder, 2026-10-19: approved the four-phase analytics plan ("FinnBots
+   Analytics Plan" doc) — "Also keep this all free", and: "Ensure that this
+   reporting layer does not affect anything else cloud flare supports for
+   finnbots or cost me anything the data doesnt have to be realtime".
+
+   SOURCE OF TRUTH. Injected by apply-analytics.js as <script id="fb-analytics">
+   just before </body>, beside the Cloudflare beacon tag (page views come from
+   the beacon, which is not a Worker and spends nothing of ours; this layer adds
+   what the beacon cannot see). Entirely passive:
+
+     - it NEVER touches the engine, the wallet layer or a wallet
+     - it watches the run-over card (#overOverlay) and the paid panel
+       (#paidOverlay) — the same elements the stickiness layer reads
+     - no cookie, no ID: what it keeps on the device is a handful of COUNTS
+       for this game, and the date it last sent them
+
+   AT MOST ONE REQUEST PER DEVICE PER DAY. Every request to the events Worker
+   spends the account's FREE Workers allowance (100,000 a day), and that
+   allowance is SHARED with the RPC Worker every paid entry needs. Real time is
+   not wanted, so counts pile up on the device and leave once a day, on the
+   first page-hide of a new UTC day (or the first one ever). What is sent: the
+   device class (phone / tablet / laptop) and, since the last send, how many
+   visits there were, how many touched the game, how many runs ended, how many
+   times the paid panel opened, and how many visits finished a run / opened the
+   paid panel. The game is NOT in the payload — the Worker reads it from the
+   Origin header, so a payload cannot claim to be another game. Nothing is sent
+   off the live domain (local playtests and gates never send). If the browser
+   will not store anything (private mode), it sends at most once per page.
+   ========================================================================== */
+(function(){
+  try{
+    var END = 'https://finnbots-events.mart-kin1000.workers.dev/e';
+    var host = String(location.hostname || '');
+    if(!/\.finnstergram\.com$/.test(host)) return;           // live games only
+    if(!navigator.sendBeacon) return;
+    var $ = function(id){ return document.getElementById(id); };
+    var KEY = 'fb:' + host.split('.')[0] + ':counts';
+    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0 }; };
+    var day = function(){ return new Date().toISOString().slice(0, 10); };
+
+    var dev = (function(){
+      var coarse = false;
+      try{ coarse = matchMedia('(pointer: coarse)').matches; }catch(e){}
+      if(!coarse) return 'laptop';
+      var s = (typeof screen !== 'undefined') ? Math.min(screen.width || 0, screen.height || 0) : 0;
+      return (s && s < 600) ? 'phone' : 'tablet';
+    })();
+
+    /* this visit, as it happens */
+    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, sentThisPage = false;
+
+    /* 1. played: the first input that is not on the page's own chrome */
+    var chrome = function(t){
+      return !!(t && t.closest && t.closest('button, a, input, select, textarea, summary, .overlay, .sheet, .topbar'));
+    };
+    var dialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
+    addEventListener('keydown', function(){ if(!v.s && !dialog()) v.s = 1; }, true);
+    addEventListener('pointerdown', function(e){ if(!v.s && !chrome(e && e.target)) v.s = 1; }, true);
+
+    /* 2. a run ended, 3. the paid panel opened — each a rising edge of .show */
+    function edge(el, fn){
+      if(!el) return;
+      var on = el.classList.contains('show');
+      new MutationObserver(function(){
+        var now = el.classList.contains('show');
+        if(now && !on) fn();
+        on = now;
+      }).observe(el, { attributes:true, attributeFilter:['class'] });
+    }
+    edge($('overOverlay'), function(){ v.r++; v.s = 1; v.f = 1; });
+    edge($('paidOverlay'), function(){ v.p++; v.q = 1; });
+
+    /* the device's pile of unsent counts */
+    var store = null;
+    function load(){
+      try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+           if(o && o.c && typeof o.c.r === 'number') return o; }catch(e){}
+      return { sent:'', c:ZERO() };
+    }
+    function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
+
+    /* bank what this visit added since the last bank, then send the pile if today has not had a send */
+    function flush(){
+      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q };
+      var any = d.s || d.r || d.p;
+      store = load();
+      if(any){
+        if(!visitBanked){ store.c.n++; visitBanked = true; }
+        store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q;
+        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q };
+      }
+      var kept = save(store);
+      var c = store.c;
+      if(!(c.s || c.r || c.p)) return;
+      if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
+      var body = JSON.stringify({ v:2, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q });
+      if(navigator.sendBeacon(END, body)){
+        sentThisPage = true;
+        store.sent = day(); store.c = ZERO(); save(store);
+      }
+    }
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'hidden') flush();
+    });
+    addEventListener('pagehide', flush);
+    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q }, store:load() }; };
+  }catch(e){ /* analytics must never break a game */ }
 })();
 </script>
 </body>
