@@ -106,7 +106,8 @@ function parseCSV(text){
     header.forEach(function(h,j){ o[h]=c[j]; }); rows.push(o); }
   return {cols:header,rows:rows};
 }
-function shortAddr(a){ return a ? a.slice(0,4)+'…'+a.slice(-4) : '—'; }
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }  /* F19: board values are DATA, never markup */
+function shortAddr(a){ return a ? esc(a.slice(0,4)+'…'+a.slice(-4)) : '—'; }
 function mmss(ms){ var t=Math.floor((Number(ms)||0)/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
 function label(k){ return k.replace(/_adjusted$/,'').replace(/_/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
 
@@ -191,7 +192,7 @@ function render(parsed){
   }
   var p=plan(parsed.cols);
   var ths='<th class="rank">#</th><th>Player</th>';
-  p.display.forEach(function(c){ ths+='<th class="num">'+label(c)+'</th>'; });
+  p.display.forEach(function(c){ ths+='<th class="num">'+esc(label(c))+'</th>'; });
   if(p.timeCol) ths+='<th class="num">Time</th>';
   head.innerHTML=ths;
   var rows=shown.slice();
@@ -204,10 +205,10 @@ function render(parsed){
     var holder=((r.bot_holder||'').trim().toLowerCase());
     holder=(holder==='yes'||holder==='true'||holder==='1');
     html+='<tr><td class="rank">'+(i+1)+'</td>'+
-      '<td class="who" title="Tap to copy" data-full="'+(r.wallet||'')+'">'+shortAddr(r.wallet)+(holder?'<span class="h">Bot ×1.5</span>':'')+'</td>';
+      '<td class="who" title="Tap to copy" data-full="'+esc(r.wallet||'')+'">'+shortAddr(r.wallet)+(holder?'<span class="h">Bot ×1.5</span>':'')+'</td>';
     p.display.forEach(function(c,ci){
       var v=r[c]; var num=Number(v);
-      html+='<td class="num'+(ci===0?' metric':'')+'">'+(isFinite(num)?num:(v||'—'))+'</td>'; });
+      html+='<td class="num'+(ci===0?' metric':'')+'">'+(isFinite(num)?num:esc(v||'—'))+'</td>'; });
     if(p.timeCol) html+='<td class="num">'+mmss(r[p.timeCol])+'</td>';
     html+='</tr>';
   });
