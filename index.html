@@ -2445,6 +2445,435 @@ if(!HEADLESS){
   }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
+<script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
+<script id="fb-analytics">
+/* ==========================================================================
+   FinnBots ANALYTICS LAYER — how the games are PLAYED, counted, never who plays.
+   Founder, 2026-10-19: approved the four-phase analytics plan ("FinnBots
+   Analytics Plan" doc) — "Also keep this all free", and: "Ensure that this
+   reporting layer does not affect anything else cloud flare supports for
+   finnbots or cost me anything the data doesnt have to be realtime".
+
+   SOURCE OF TRUTH. Injected by apply-analytics.js as <script id="fb-analytics">
+   just before </body>, beside the Cloudflare beacon tag (page views come from
+   the beacon, which is not a Worker and spends nothing of ours; this layer adds
+   what the beacon cannot see). Entirely passive:
+
+     - it NEVER touches the engine, the wallet layer or a wallet
+     - it watches the run-over card (#overOverlay) and the paid panel
+       (#paidOverlay) — the same elements the stickiness layer reads
+     - no cookie, no ID: what it keeps on the device is a handful of COUNTS
+       for this game, and the date it last sent them
+
+   AT MOST ONE REQUEST PER DEVICE PER DAY. Every request to the events Worker
+   spends the account's FREE Workers allowance (100,000 a day), and that
+   allowance is SHARED with the RPC Worker every paid entry needs. Real time is
+   not wanted, so counts pile up on the device and leave once a day, on the
+   first page-hide of a new UTC day (or the first one ever). What is sent: the
+   device class (phone / tablet / laptop) and, since the last send, how many
+   visits there were, how many touched the game, how many runs ended, how many
+   times the paid panel opened, and how many visits finished a run / opened the
+   paid panel. The game is NOT in the payload — the Worker reads it from the
+   Origin header, so a payload cannot claim to be another game. Nothing is sent
+   off the live domain (local playtests and gates never send). If the browser
+   will not store anything (private mode), it sends at most once per page.
+   ========================================================================== */
+(function(){
+  try{
+    var END = 'https://finnbots-events.mart-kin1000.workers.dev/e';
+    var host = String(location.hostname || '');
+    if(!/\.finnstergram\.com$/.test(host)) return;           // live games only
+    if(!navigator.sendBeacon) return;
+    var $ = function(id){ return document.getElementById(id); };
+    var KEY = 'fb:' + host.split('.')[0] + ':counts';
+    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0 }; };
+    var day = function(){ return new Date().toISOString().slice(0, 10); };
+
+    var dev = (function(){
+      var coarse = false;
+      try{ coarse = matchMedia('(pointer: coarse)').matches; }catch(e){}
+      if(!coarse) return 'laptop';
+      var s = (typeof screen !== 'undefined') ? Math.min(screen.width || 0, screen.height || 0) : 0;
+      return (s && s < 600) ? 'phone' : 'tablet';
+    })();
+
+    /* this visit, as it happens */
+    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, sentThisPage = false;
+
+    /* 1. played: the first input that is not on the page's own chrome */
+    var chrome = function(t){
+      return !!(t && t.closest && t.closest('button, a, input, select, textarea, summary, .overlay, .sheet, .topbar'));
+    };
+    var dialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
+    addEventListener('keydown', function(){ if(!v.s && !dialog()) v.s = 1; }, true);
+    addEventListener('pointerdown', function(e){ if(!v.s && !chrome(e && e.target)) v.s = 1; }, true);
+
+    /* 2. a run ended, 3. the paid panel opened — each a rising edge of .show */
+    function edge(el, fn){
+      if(!el) return;
+      var on = el.classList.contains('show');
+      new MutationObserver(function(){
+        var now = el.classList.contains('show');
+        if(now && !on) fn();
+        on = now;
+      }).observe(el, { attributes:true, attributeFilter:['class'] });
+    }
+    edge($('overOverlay'), function(){ v.r++; v.s = 1; v.f = 1; });
+    edge($('paidOverlay'), function(){ v.p++; v.q = 1; });
+
+    /* the device's pile of unsent counts */
+    var store = null;
+    function load(){
+      try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+           if(o && o.c && typeof o.c.r === 'number') return o; }catch(e){}
+      return { sent:'', c:ZERO() };
+    }
+    function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
+
+    /* bank what this visit added since the last bank, then send the pile if today has not had a send */
+    function flush(){
+      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q };
+      var any = d.s || d.r || d.p;
+      store = load();
+      if(any){
+        if(!visitBanked){ store.c.n++; visitBanked = true; }
+        store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q;
+        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q };
+      }
+      var kept = save(store);
+      var c = store.c;
+      if(!(c.s || c.r || c.p)) return;
+      if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
+      var body = JSON.stringify({ v:2, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q });
+      if(navigator.sendBeacon(END, body)){
+        sentThisPage = true;
+        store.sent = day(); store.c = ZERO(); save(store);
+      }
+    }
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'hidden') flush();
+    });
+    addEventListener('pagehide', flush);
+    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q }, store:load() }; };
+  }catch(e){ /* analytics must never break a game */ }
+})();
+</script>
+<script id="fb-family">
+/* ==========================================================================
+   FinnBots FAMILY CODEC — the one on-device play record, read and written.
+   PARENTS-AND-OIL-BRIEF.md, Phase 1 (P1 + P2).
+
+   SOURCE OF TRUTH. apply-family.js puts this text in TWO places, byte for byte:
+     - every game, ahead of templates/family-layer.js, in <script id="fb-family">
+     - the site, ahead of templates/family-report.js, in /assets/family.js
+   verify-family.js round-trips a record from the first to the second, so the
+   game that WRITES and the page that READS can never disagree on the format.
+
+   WHY A COOKIE. Each game is its own subdomain, so one game's localStorage is
+   invisible to every other game and to finnstergram.com/parents/. A cookie on
+   .finnstergram.com is the one store they all share (fb-theme already works
+   this way). It is a functional record the family asked for by playing: no
+   identifier, no name, nothing FinnBots ever reads on a server. It is capped
+   at MAX bytes and sheds the least recently played games first.
+
+   FORMAT (v1): parts joined by "!", fields by "~", numbers in base 36.
+     1                                 version
+     t~<day>~<quarter-minutes>         active play time on a UTC day
+     g~<sub>~<best>~<runs>~<days>~<first>~<last>~<best0>
+                                       one game: best score, finished runs,
+                                       distinct days played, first and last
+                                       day played, best score on the first day
+   <day> counts UTC days from 2026-01-01. UTC, to match the daily challenge.
+   ========================================================================== */
+var FB_FAMILY_CODEC = (function(){
+  var NAME = 'fb-family', V = '1', MAX = 3600, KEEP_DAYS = 35;
+  var EPOCH = Date.UTC(2026, 0, 1), DAY = 86400000;
+  var SUB = /^[a-z0-9-]{1,40}$/;
+
+  function dayIdx(ms){ return Math.floor(((ms == null ? Date.now() : ms) - EPOCH) / DAY); }
+  function dayDate(i){ return new Date(EPOCH + i * DAY); }
+  function n36(x){ x = Math.max(0, Math.floor(+x || 0)); return x.toString(36); }
+  function p36(s){ if(!/^[0-9a-z]{1,9}$/.test(s || '')) return null; return parseInt(s, 36); }
+  function empty(){ return { games: {}, time: {} }; }
+
+  function encode(rec){
+    var g = (rec && rec.games) || {}, t = (rec && rec.time) || {}, today = dayIdx();
+    var tparts = Object.keys(t).map(Number)
+      .filter(function(d){ return d > today - KEEP_DAYS && d <= today && t[d] > 0; })
+      .sort(function(a, b){ return a - b; })
+      .map(function(d){ return 't~' + n36(d) + '~' + n36(t[d]); });
+    var gparts = Object.keys(g).filter(function(s){ return SUB.test(s); })
+      .sort(function(a, b){ return ((g[b].l || 0) - (g[a].l || 0)) || (a < b ? -1 : 1); })
+      .map(function(s){ var e = g[s];
+        return ['g', s, n36(e.b), n36(e.r), n36(e.d), n36(e.f), n36(e.l), n36(e.b0)].join('~'); });
+    function all(){ return [V].concat(tparts, gparts).join('!'); }
+    /* over budget: forget the game played longest ago, then the oldest day */
+    while(all().length > MAX && gparts.length) gparts.pop();
+    while(all().length > MAX && tparts.length) tparts.shift();
+    return all();
+  }
+
+  function decode(str){
+    var rec = empty();
+    if(typeof str !== 'string') return rec;
+    var parts = str.split('!');
+    if(parts[0] !== V) return rec;
+    for(var i = 1; i < parts.length; i++){
+      var f = parts[i].split('~');
+      if(f[0] === 't' && f.length === 3){
+        var d = p36(f[1]), q = p36(f[2]);
+        if(d != null && q != null) rec.time[d] = q;
+      } else if(f[0] === 'g' && f.length === 8 && SUB.test(f[1])){
+        var v = f.slice(2).map(p36);
+        if(v.indexOf(null) >= 0) continue;
+        rec.games[f[1]] = { b: v[0], r: v[1], d: v[2], f: v[3], l: v[4], b0: v[5] };
+      }
+    }
+    return rec;
+  }
+
+  function attrs(loc){
+    var h = (loc && loc.hostname) || '';
+    var dom = /(^|\.)finnstergram\.com$/.test(h) ? '; Domain=finnstergram.com' : '';
+    var sec = (loc && loc.protocol === 'https:') ? '; Secure' : '';
+    return '; Path=/' + dom + '; SameSite=Lax' + sec;
+  }
+  function read(doc){
+    var m = /(?:^|;\s*)fb-family=([^;]*)/.exec((doc && doc.cookie) || '');
+    return decode(m ? m[1] : '');
+  }
+  function write(rec, doc, loc){
+    doc.cookie = NAME + '=' + encode(rec) + '; Max-Age=31536000' + attrs(loc);
+  }
+  function clear(doc, loc){
+    doc.cookie = NAME + '=; Max-Age=0' + attrs(loc);
+  }
+
+  return { NAME: NAME, MAX: MAX, dayIdx: dayIdx, dayDate: dayDate, encode: encode, decode: decode,
+           read: read, write: write, clear: clear, empty: empty };
+})();
+/* ==========================================================================
+   FinnBots FAMILY LAYER — the parents' half of the game. PARENTS-AND-OIL-BRIEF.md
+   Phase 1. Founder, 2026-10-21: "A reason for parents to care: seeing what
+   their child plays, earns and achieves, and feeling good about it."
+
+   SOURCE OF TRUTH. Injected by apply-family.js as <script id="fb-family"> just
+   before </body>, after templates/family-codec.js (same script element).
+
+   What it does, and nothing else:
+     1. BANKS each finished run into the on-device record (best, runs, days
+        played, first-day best) and counts ACTIVE play time: a 15-second tick
+        that only counts while the page is visible and the player touched it
+        in the last minute. A tab left open is not play.
+        finnstergram.com/parents/ turns that record into the grown-ups' report.
+     2. FAMILY CHALLENGE. The run-over card gets a "Challenge family" button
+        that shares a link carrying the score and the UTC day: "Can you beat
+        my 4,210 on BOTMAN today?". Everybody plays the same seed each day, so
+        whoever opens it plays the same run. Opening one shows the target, and
+        the run-over card then says how the run compared.
+
+   The children rule (MONETISATION-BRIEF.md), applied line by line:
+     - nothing here shows a price, mentions $OIL or touches a wallet;
+     - no countdown: a challenge from another day says so and still works;
+     - the link carries a number and a day, never a name, and opens no way to
+       contact anybody (/parents/ promises "no chat");
+     - nothing leaves the device: no network call of any kind.
+
+   It must never break a game: everything is inside one try/catch, and it reads
+   the DOM the game already wrote (#oScore), exactly like fb-sticky.
+   ========================================================================== */
+(function(){
+  try{
+    var C = window.FB_FAMILY_CODEC;
+    var $ = function(id){ return document.getElementById(id); };
+    var overlay = $('overOverlay'), card = $('overCard'), scoreEl = $('oScore');
+    /* HARD dependencies (check-layers.js reads this guard). */
+    if(!C || !overlay || !card || !scoreEl) return;
+
+    var GAME = (String(location.hostname || '').split('.')[0] || 'game').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'game';
+    var fmt = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    var num = function(t){ var n = parseInt(String(t == null ? '' : t).replace(/[^0-9]/g, ''), 10); return isFinite(n) ? n : 0; };
+    var has = function(el, c){ return !!(el && el.classList && el.classList.contains(c)); };
+    var attrHidden = function(el){
+      if(!el) return true;
+      if(el.hidden === true) return true;
+      var a = el.getAttribute ? el.getAttribute('hidden') : null;
+      return a !== null && a !== undefined;
+    };
+    /* the same state-not-mechanism visibility test fb-outro uses: three
+       conventions are in service (.show added, .hidden removed, both) */
+    function visible(el){
+      if(attrHidden(el) || has(el, 'hidden')) return false;
+      if(has(el, 'show')) return true;
+      if(el.style && el.style.display === 'none') return false;
+      return (typeof el.offsetParent !== 'undefined') ? el.offsetParent !== null : false;
+    }
+    /* Bot Pong and Bot Merge reuse the card as their START card: not a run end */
+    function isStartCard(){
+      if(attrHidden(scoreEl)) return true;
+      var kids = card.querySelectorAll ? card.querySelectorAll('[id]') : [];
+      for(var i = 0; i < kids.length; i++){
+        if(/^start/i.test(kids[i].id || '') && !attrHidden(kids[i])) return true;
+      }
+      return false;
+    }
+    function gameName(){
+      var t = document.querySelector('.topbar .title, .topbar h1, header .title');
+      var s = (t && t.textContent || document.title || '').replace(/\s+/g, ' ').trim();
+      return s.split(/\s[—|·-]\s/)[0] || 'FinnBots';
+    }
+
+    /* ---- 1. the record ------------------------------------------------- */
+    function bank(score){
+      var rec = C.read(document), d = C.dayIdx(), e = rec.games[GAME];
+      if(!e){ e = rec.games[GAME] = { b: score, r: 0, d: 1, f: d, l: d, b0: score }; }
+      if(e.l !== d){ e.d++; e.l = d; }
+      e.r++;
+      if(score > e.b) e.b = score;
+      if(e.f === d && score > e.b0) e.b0 = score;
+      C.write(rec, document, location);
+    }
+
+    var lastInput = -1e12;
+    var touched = function(){ lastInput = Date.now(); };
+    ['keydown', 'pointerdown', 'touchstart', 'mousedown'].forEach(function(t){
+      addEventListener(t, touched, { capture: true, passive: true });
+    });
+    function tick(){
+      try{
+        var shown = !document.visibilityState || document.visibilityState === 'visible';
+        if(shown && Date.now() - lastInput < 60000){
+          var rec = C.read(document), d = C.dayIdx();
+          rec.time[d] = (rec.time[d] || 0) + 1;            // one quarter-minute
+          C.write(rec, document, location);
+        }
+      }catch(e){}
+      setTimeout(tick, 15000);
+    }
+    setTimeout(tick, 15000);
+
+    /* ---- 2. the family challenge ---------------------------------------- */
+    var CH = null;
+    var m = /[#&]fbc=(\d{1,9})\.([0-9a-z]{1,6})(?:&|$)/.exec(String(location.hash || ''));
+    if(m) CH = { s: +m[1], d: parseInt(m[2], 36) };
+
+    var css = document.createElement('style');
+    css.id = 'fb-family-css';
+    css.textContent =
+      '.fb-fam-banner{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;' +
+        'width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:8px 10px 8px 14px;border-radius:999px;background:var(--fb-plum-deep,#3e323a);color:#fff;' +
+        'font:600 14px/1.3 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35)}' +
+      '.fb-fam-banner b{color:var(--fb-amber,#f2a03d)}' +
+      '@media (max-width:480px){.fb-fam-banner{top:6px;font-size:13px;padding:6px 8px 6px 12px}}' +
+      '.fb-fam-banner button{border:0;background:transparent;color:inherit;font:inherit;font-size:18px;line-height:1;padding:2px 6px;cursor:pointer}' +
+      '.fb-fam-line{margin:6px 0 0;font-weight:700}' +
+      '.fb-fam-line .go{color:var(--fb-amber,#f2a03d)}' +
+      '.fb-fam-share{display:block;margin:10px auto 0;border:2px solid currentColor;background:transparent;color:inherit;border-radius:999px;' +
+        'padding:6px 16px;font:700 14px/1.2 system-ui,sans-serif;cursor:pointer;opacity:.9}' +
+      '.fb-fam-share[hidden],.fb-fam-link[hidden]{display:none}' +
+      '.fb-fam-link{display:block;width:100%;max-width:340px;margin:8px auto 0;font:12px/1.3 ui-monospace,monospace;padding:6px;border-radius:8px}';
+    (document.head || document.body).appendChild(css);
+
+    function dayLabel(d){
+      var t = C.dayIdx();
+      if(d === t) return "today's run";
+      try{ return 'the run of ' + C.dayDate(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+      catch(e){ return 'an earlier day'; }
+    }
+    if(CH){
+      var ban = document.createElement('div');
+      ban.className = 'fb-fam-banner'; ban.setAttribute('role', 'status');
+      var bt = document.createElement('span');
+      bt.appendChild(document.createTextNode('Family challenge: beat '));
+      var bb = document.createElement('b'); bb.textContent = fmt(CH.s); bt.appendChild(bb);
+      bt.appendChild(document.createTextNode(' on ' + dayLabel(CH.d)));
+      var bx = document.createElement('button');
+      bx.type = 'button'; bx.setAttribute('aria-label', 'Close'); bx.textContent = '×';
+      bx.addEventListener('click', function(){ ban.hidden = true; ban.style.display = 'none'; });
+      ban.appendChild(bt); ban.appendChild(bx);
+      document.body.appendChild(ban);
+      /* it reminds, then gets out of the way of the game: the first key or
+         touch after a moment hides it (a phone player never presses a key) */
+      var armed = Date.now() + 1500;
+      var away = function(){ if(Date.now() > armed){ ban.hidden = true; ban.style.display = 'none'; } };
+      addEventListener('keydown', away, true);
+      addEventListener('pointerdown', away, true);
+    }
+
+    var line = document.createElement('p');
+    line.className = 'fb-fam-line'; line.hidden = true;
+    var share = document.createElement('button');
+    share.type = 'button'; share.className = 'fb-fam-share'; share.hidden = true;
+    share.textContent = 'Challenge family';
+    var link = document.createElement('input');
+    link.className = 'fb-fam-link'; link.readOnly = true; link.hidden = true;
+    link.setAttribute('aria-label', 'Challenge link');
+    var retry = $('retryBtn');
+    if(retry && retry.parentNode){
+      retry.parentNode.insertBefore(share, retry.nextSibling);
+      retry.parentNode.insertBefore(link, share.nextSibling);
+      retry.parentNode.insertBefore(line, retry);
+    } else { card.appendChild(line); card.appendChild(share); card.appendChild(link); }
+
+    var lastScore = 0;
+    share.addEventListener('click', function(){
+      var url = (location.origin || ('https://' + location.hostname)) + (location.pathname || '/') +
+                '#fbc=' + lastScore + '.' + C.dayIdx().toString(36);
+      var text = 'Can you beat my ' + fmt(lastScore) + ' on ' + gameName() + ' today?';
+      var showLink = function(){ link.value = url; link.hidden = false; try{ link.select(); }catch(e){} };
+      var nav = window.navigator || {};
+      if(nav.share){ nav.share({ title: gameName(), text: text, url: url }).catch(function(){}); return; }
+      if(nav.clipboard && nav.clipboard.writeText){
+        nav.clipboard.writeText(text + ' ' + url).then(function(){
+          share.textContent = 'Link copied ✓';
+          setTimeout(function(){ share.textContent = 'Challenge family'; }, 2000);
+        }, showLink);
+        return;
+      }
+      showLink();
+    });
+
+    function onRunEnd(){
+      var score = num(scoreEl.textContent);
+      lastScore = score;
+      bank(score);
+      share.hidden = !(score > 0);
+      link.hidden = true;
+      if(CH){
+        line.textContent = '';
+        var gap = score - CH.s, sp = document.createElement('span');
+        if(gap > 0){ sp.className = 'go'; sp.textContent = 'Family challenge beaten by ' + fmt(gap) + '!'; }
+        else if(gap === 0){ sp.className = 'go'; sp.textContent = 'Family challenge matched exactly!'; }
+        else { sp.textContent = fmt(-gap) + ' short of the family challenge'; }
+        line.appendChild(sp); line.hidden = false;
+      }
+    }
+
+    /* The SCORE must be on screen, not just the overlay. Bot Pong's overlay holds
+       a start/pause card AND a hidden run-over card: the overlay showing for a
+       pause is not a run end (found on the real game 2026-10-21; the first
+       fixture had one card and could not see it). So every element from #oScore
+       up to the overlay must be unhidden, and the CARD is watched as well,
+       because a game may reveal the run end by un-hiding the card alone. */
+    function scoreShown(){
+      for(var n = scoreEl; n && n !== overlay; n = n.parentNode){
+        if(attrHidden(n) || has(n, 'hidden') || (n.style && n.style.display === 'none')) return false;
+      }
+      return true;
+    }
+    var on = false;
+    function check(){
+      var v = visible(overlay) && scoreShown() && !isStartCard();
+      if(v && !on){ on = true; onRunEnd(); }
+      else if(!v){ on = false; }
+    }
+    var mo = new MutationObserver(check), watch = { attributes: true, attributeFilter: ['class', 'hidden', 'style'] };
+    mo.observe(overlay, watch);
+    if(card !== overlay) mo.observe(card, watch);
+    window.FB_FAMILY = { game: GAME, challenge: CH };
+  }catch(e){ /* the family layer must never break a game */ }
+})();
+</script>
 <script id="fb-outro" data-fb-board="leaderboard_wing.csv">
 /* ==========================================================================
    FinnBots OUTRO LAYER — the ending screen.
@@ -2994,119 +3423,6 @@ if(!HEADLESS){
                counting:box.classList.contains('fb-outro-counting') };
     };
   }catch(e){ /* an ending screen must never break a game */ }
-})();
-</script>
-<script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
-<script id="fb-analytics">
-/* ==========================================================================
-   FinnBots ANALYTICS LAYER — how the games are PLAYED, counted, never who plays.
-   Founder, 2026-10-19: approved the four-phase analytics plan ("FinnBots
-   Analytics Plan" doc) — "Also keep this all free", and: "Ensure that this
-   reporting layer does not affect anything else cloud flare supports for
-   finnbots or cost me anything the data doesnt have to be realtime".
-
-   SOURCE OF TRUTH. Injected by apply-analytics.js as <script id="fb-analytics">
-   just before </body>, beside the Cloudflare beacon tag (page views come from
-   the beacon, which is not a Worker and spends nothing of ours; this layer adds
-   what the beacon cannot see). Entirely passive:
-
-     - it NEVER touches the engine, the wallet layer or a wallet
-     - it watches the run-over card (#overOverlay) and the paid panel
-       (#paidOverlay) — the same elements the stickiness layer reads
-     - no cookie, no ID: what it keeps on the device is a handful of COUNTS
-       for this game, and the date it last sent them
-
-   AT MOST ONE REQUEST PER DEVICE PER DAY. Every request to the events Worker
-   spends the account's FREE Workers allowance (100,000 a day), and that
-   allowance is SHARED with the RPC Worker every paid entry needs. Real time is
-   not wanted, so counts pile up on the device and leave once a day, on the
-   first page-hide of a new UTC day (or the first one ever). What is sent: the
-   device class (phone / tablet / laptop) and, since the last send, how many
-   visits there were, how many touched the game, how many runs ended, how many
-   times the paid panel opened, and how many visits finished a run / opened the
-   paid panel. The game is NOT in the payload — the Worker reads it from the
-   Origin header, so a payload cannot claim to be another game. Nothing is sent
-   off the live domain (local playtests and gates never send). If the browser
-   will not store anything (private mode), it sends at most once per page.
-   ========================================================================== */
-(function(){
-  try{
-    var END = 'https://finnbots-events.mart-kin1000.workers.dev/e';
-    var host = String(location.hostname || '');
-    if(!/\.finnstergram\.com$/.test(host)) return;           // live games only
-    if(!navigator.sendBeacon) return;
-    var $ = function(id){ return document.getElementById(id); };
-    var KEY = 'fb:' + host.split('.')[0] + ':counts';
-    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0 }; };
-    var day = function(){ return new Date().toISOString().slice(0, 10); };
-
-    var dev = (function(){
-      var coarse = false;
-      try{ coarse = matchMedia('(pointer: coarse)').matches; }catch(e){}
-      if(!coarse) return 'laptop';
-      var s = (typeof screen !== 'undefined') ? Math.min(screen.width || 0, screen.height || 0) : 0;
-      return (s && s < 600) ? 'phone' : 'tablet';
-    })();
-
-    /* this visit, as it happens */
-    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, sentThisPage = false;
-
-    /* 1. played: the first input that is not on the page's own chrome */
-    var chrome = function(t){
-      return !!(t && t.closest && t.closest('button, a, input, select, textarea, summary, .overlay, .sheet, .topbar'));
-    };
-    var dialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
-    addEventListener('keydown', function(){ if(!v.s && !dialog()) v.s = 1; }, true);
-    addEventListener('pointerdown', function(e){ if(!v.s && !chrome(e && e.target)) v.s = 1; }, true);
-
-    /* 2. a run ended, 3. the paid panel opened — each a rising edge of .show */
-    function edge(el, fn){
-      if(!el) return;
-      var on = el.classList.contains('show');
-      new MutationObserver(function(){
-        var now = el.classList.contains('show');
-        if(now && !on) fn();
-        on = now;
-      }).observe(el, { attributes:true, attributeFilter:['class'] });
-    }
-    edge($('overOverlay'), function(){ v.r++; v.s = 1; v.f = 1; });
-    edge($('paidOverlay'), function(){ v.p++; v.q = 1; });
-
-    /* the device's pile of unsent counts */
-    var store = null;
-    function load(){
-      try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
-           if(o && o.c && typeof o.c.r === 'number') return o; }catch(e){}
-      return { sent:'', c:ZERO() };
-    }
-    function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
-
-    /* bank what this visit added since the last bank, then send the pile if today has not had a send */
-    function flush(){
-      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q };
-      var any = d.s || d.r || d.p;
-      store = load();
-      if(any){
-        if(!visitBanked){ store.c.n++; visitBanked = true; }
-        store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q;
-        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q };
-      }
-      var kept = save(store);
-      var c = store.c;
-      if(!(c.s || c.r || c.p)) return;
-      if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
-      var body = JSON.stringify({ v:2, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q });
-      if(navigator.sendBeacon(END, body)){
-        sentThisPage = true;
-        store.sent = day(); store.c = ZERO(); save(store);
-      }
-    }
-    document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'hidden') flush();
-    });
-    addEventListener('pagehide', flush);
-    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q }, store:load() }; };
-  }catch(e){ /* analytics must never break a game */ }
 })();
 </script>
 </body>
