@@ -3122,11 +3122,14 @@ var FB_FAMILY_CODEC = (function(){
         whoever opens it plays the same run. Opening one shows the target, and
         the run-over card then says how the run compared.
      3. E1 (PARENTS-AND-OIL-BRIEF.md section 6). On a game whose tag carries
-        data-fb-e1="<NS>" (apply-family.js stamps it from the game's own memoNS
-        when the code is on templates/e1-roster.json), a WON run on TODAY's
-        daily seed (not practice, not a paid entry's private seed) is recorded
-        as cleared, and the card says "Today's challenge cleared". That is ALL
-        the child sees: a grown-up collects it on /parents/.
+        data-fb-e1="<NS>" and data-fb-e1-progress="<Engine>.<counter>"
+        (apply-family.js stamps both from templates/e1-roster.json), TODAY's
+        daily challenge is recorded as cleared the moment that counter reaches 1
+        on today's daily seed (not practice, not a paid entry's private seed):
+        the first grid, word or bot (Founder D4, 2026-10-22 — the whole run was
+        too long). It is checked at the run's end AND on the 15-second tick, so
+        a child who clears one grid and closes the tab still has it. The card
+        says "Today's challenge cleared"; that is ALL the child sees.
 
    The children rule (MONETISATION-BRIEF.md), applied line by line:
      - nothing here shows a price, mentions $OIL or touches a wallet (a cleared
@@ -3150,6 +3153,10 @@ var FB_FAMILY_CODEC = (function(){
     var TAG = document.getElementById('fb-family');
     var E1 = String((TAG && TAG.getAttribute && TAG.getAttribute('data-fb-e1')) || '');
     if(!/^[A-Z0-9]{2,6}$/.test(E1)) E1 = '';
+    /* "<Engine>.<counter>": two plain identifiers, nothing else, so the attribute can name a number to read and
+       never code to run */
+    var PROG = /^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)$/.exec(String((TAG && TAG.getAttribute && TAG.getAttribute('data-fb-e1-progress')) || ''));
+    if(!PROG) E1 = '';
     var GAME = (String(location.hostname || '').split('.')[0] || 'game').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'game';
     var fmt = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
     var num = function(t){ var n = parseInt(String(t == null ? '' : t).replace(/[^0-9]/g, ''), 10); return isFinite(n) ? n : 0; };
@@ -3200,6 +3207,7 @@ var FB_FAMILY_CODEC = (function(){
       addEventListener(t, touched, { capture: true, passive: true });
     });
     function tick(){
+      try{ if(clearedToday()) markCleared(); }catch(e){}
       try{
         var shown = !document.visibilityState || document.visibilityState === 'visible';
         if(shown && Date.now() - lastInput < 60000){
@@ -3286,14 +3294,22 @@ var FB_FAMILY_CODEC = (function(){
        today's (and not practice, and not a paid entry's private seed); the
        game says whether it was won (window.FB_OUTRO.won, which it sets for the
        ending screen). */
+    function progress(){
+      try{
+        var eng = window[PROG[1]], st = eng && typeof eng.state === 'function' && eng.state(), v = st && st[PROG[2]];
+        return typeof v === 'number' && isFinite(v) ? v : 0;
+      }catch(e){ return 0; }
+    }
     function clearedToday(){
       try{
-        var S = window.FB_SEED, O = window.FB_OUTRO;
-        return !!(E1 && S && O && O.won === true && S.daily === true && !S.inPaid &&
+        var S = window.FB_SEED;
+        return !!(E1 && S && progress() >= 1 && S.daily === true && !S.inPaid &&
                   (S.value >>> 0) === (S.todaySeed() >>> 0));
       }catch(e){ return false; }
     }
+    function isMarked(){ return !!(E1 && C.read(document).cleared[E1 + '.' + C.dayIdx()]); }
     function markCleared(){
+      if(isMarked()) return;
       var rec = C.read(document);
       rec.cleared[E1 + '.' + C.dayIdx()] = 1;
       C.write(rec, document, location);
@@ -3321,8 +3337,8 @@ var FB_FAMILY_CODEC = (function(){
       var score = num(scoreEl.textContent);
       lastScore = score;
       bank(score);
-      clearLine.hidden = true;
-      if(clearedToday()){ markCleared(); clearLine.hidden = false; }
+      if(clearedToday()) markCleared();
+      clearLine.hidden = !isMarked();
       share.hidden = !(score > 0);
       link.hidden = true;
       if(CH){
