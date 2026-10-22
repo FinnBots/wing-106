@@ -108,6 +108,11 @@ function parseCSV(text){
 }
 function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }  /* F19: board values are DATA, never markup */
 function shortAddr(a){ return a ? esc(a.slice(0,4)+'…'+a.slice(-4)) : '—'; }
+/* S1 cabinet names (PARENTS-AND-OIL-BRIEF.md section 7): a holder's paid name for a season, from a FIXED list of robot
+   words (never typed), published by the scanner as cabinet_names.csv beside this board. Missing file = addresses, as before. */
+var NAMES={};
+function nameFor(r){ var w=r.wallet||''; return NAMES[(r.season||'')+'|'+w] || NAMES[utcSeason(new Date())+'|'+w] || ''; }
+function who(r){ var n=nameFor(r); return n ? esc(n) : shortAddr(r.wallet); }
 function mmss(ms){ var t=Math.floor((Number(ms)||0)/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
 function label(k){ return k.replace(/_adjusted$/,'').replace(/_/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
 
@@ -205,7 +210,7 @@ function render(parsed){
     var holder=((r.bot_holder||'').trim().toLowerCase());
     holder=(holder==='yes'||holder==='true'||holder==='1');
     html+='<tr><td class="rank">'+(i+1)+'</td>'+
-      '<td class="who" title="Tap to copy" data-full="'+esc(r.wallet||'')+'">'+shortAddr(r.wallet)+(holder?'<span class="h">Bot ×1.5</span>':'')+'</td>';
+      '<td class="who" title="Tap to copy the wallet address" data-full="'+esc(r.wallet||'')+'" data-name="'+esc(nameFor(r))+'">'+who(r)+(holder?'<span class="h">Bot ×1.5</span>':'')+'</td>';
     p.display.forEach(function(c,ci){
       var v=r[c]; var num=Number(v);
       html+='<td class="num'+(ci===0?' metric':'')+'">'+(isFinite(num)?num:esc(v||'—'))+'</td>'; });
@@ -214,16 +219,20 @@ function render(parsed){
   });
   tb.innerHTML=html;
   Array.prototype.forEach.call(tb.querySelectorAll('.who'),function(el){
-    el.addEventListener('click',function(){ var f=el.getAttribute('data-full'); if(f&&navigator.clipboard){ navigator.clipboard.writeText(f); el.firstChild.textContent='copied'; setTimeout(function(){ el.firstChild.textContent=shortAddr(f); },900); } });
+    el.addEventListener('click',function(){ var f=el.getAttribute('data-full'); if(f&&navigator.clipboard){ navigator.clipboard.writeText(f); el.firstChild.textContent='copied'; setTimeout(function(){ var n=el.getAttribute('data-name'); el.firstChild.textContent=n||(f.slice(0,4)+'…'+f.slice(-4)); },900); } });
   });
 }
 
+var namesReady = fetch('cabinet_names.csv?v='+Date.now(),{cache:'no-store'})
+  .then(function(r){ return r.ok ? r.text() : ''; })
+  .then(function(t){ parseCSV(t).rows.forEach(function(r){ if(r.season&&r.wallet&&r.name) NAMES[r.season+'|'+r.wallet]=r.name; }); })
+  .catch(function(){});
 fetch(CSV+'?v='+Date.now(),{cache:'no-store'})
   .then(function(r){ if(!r.ok) throw new Error('no csv');
     var lm=r.headers.get('Last-Modified');
     document.getElementById('updated').textContent = lm ? ('Updated '+new Date(lm).toLocaleString('en-GB')) : 'Updated on each scanner run';
     return r.text(); })
-  .then(function(t){ render(parseCSV(t)); })
+  .then(function(t){ return namesReady.then(function(){ render(parseCSV(t)); }); })
   .catch(function(){ document.getElementById('updated').textContent='Board updates on each scanner run.';
     render({cols:[],rows:[]}); });
 
