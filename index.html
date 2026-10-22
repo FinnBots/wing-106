@@ -3021,18 +3021,21 @@ if(!HEADLESS){
                                        one game: best score, finished runs,
                                        distinct days played, first and last
                                        day played, best score on the first day
+     c~<NS>~<day>                      E1: that game's daily challenge was
+                                       CLEARED on that day (kept 7 days, the
+                                       window a parent has to collect it)
    <day> counts UTC days from 2026-01-01. UTC, to match the daily challenge.
    ========================================================================== */
 var FB_FAMILY_CODEC = (function(){
   var NAME = 'fb-family', V = '1', MAX = 3600, KEEP_DAYS = 35;
   var EPOCH = Date.UTC(2026, 0, 1), DAY = 86400000;
-  var SUB = /^[a-z0-9-]{1,40}$/;
+  var SUB = /^[a-z0-9-]{1,40}$/, NS = /^[A-Z0-9]{2,6}$/, CLEAR_DAYS = 7;
 
   function dayIdx(ms){ return Math.floor(((ms == null ? Date.now() : ms) - EPOCH) / DAY); }
   function dayDate(i){ return new Date(EPOCH + i * DAY); }
   function n36(x){ x = Math.max(0, Math.floor(+x || 0)); return x.toString(36); }
   function p36(s){ if(!/^[0-9a-z]{1,9}$/.test(s || '')) return null; return parseInt(s, 36); }
-  function empty(){ return { games: {}, time: {} }; }
+  function empty(){ return { games: {}, time: {}, cleared: {} }; }
 
   function encode(rec){
     var g = (rec && rec.games) || {}, t = (rec && rec.time) || {}, today = dayIdx();
@@ -3044,8 +3047,14 @@ var FB_FAMILY_CODEC = (function(){
       .sort(function(a, b){ return ((g[b].l || 0) - (g[a].l || 0)) || (a < b ? -1 : 1); })
       .map(function(s){ var e = g[s];
         return ['g', s, n36(e.b), n36(e.r), n36(e.d), n36(e.f), n36(e.l), n36(e.b0)].join('~'); });
-    function all(){ return [V].concat(tparts, gparts).join('!'); }
-    /* over budget: forget the game played longest ago, then the oldest day */
+    var c = (rec && rec.cleared) || {};
+    var cparts = Object.keys(c).filter(function(k){
+        var p = k.split('.'), d = +p[1];
+        return c[k] && NS.test(p[0]) && d > today - CLEAR_DAYS && d <= today;
+      }).sort().map(function(k){ var p = k.split('.'); return 'c~' + p[0] + '~' + n36(+p[1]); });
+    function all(){ return [V].concat(cparts, tparts, gparts).join('!'); }
+    /* over budget: forget the game played longest ago, then the oldest day.
+       A cleared challenge is shed LAST: it is the one entry worth $OIL. */
     while(all().length > MAX && gparts.length) gparts.pop();
     while(all().length > MAX && tparts.length) tparts.shift();
     return all();
@@ -3061,6 +3070,9 @@ var FB_FAMILY_CODEC = (function(){
       if(f[0] === 't' && f.length === 3){
         var d = p36(f[1]), q = p36(f[2]);
         if(d != null && q != null) rec.time[d] = q;
+      } else if(f[0] === 'c' && f.length === 3 && NS.test(f[1])){
+        var cd = p36(f[2]);
+        if(cd != null) rec.cleared[f[1] + '.' + cd] = 1;
       } else if(f[0] === 'g' && f.length === 8 && SUB.test(f[1])){
         var v = f.slice(2).map(p36);
         if(v.indexOf(null) >= 0) continue;
@@ -3109,9 +3121,16 @@ var FB_FAMILY_CODEC = (function(){
         my 4,210 on BOTMAN today?". Everybody plays the same seed each day, so
         whoever opens it plays the same run. Opening one shows the target, and
         the run-over card then says how the run compared.
+     3. E1 (PARENTS-AND-OIL-BRIEF.md section 6). On a game whose tag carries
+        data-fb-e1="<NS>" (apply-family.js stamps it from the game's own memoNS
+        when the code is on templates/e1-roster.json), a WON run on TODAY's
+        daily seed (not practice, not a paid entry's private seed) is recorded
+        as cleared, and the card says "Today's challenge cleared". That is ALL
+        the child sees: a grown-up collects it on /parents/.
 
    The children rule (MONETISATION-BRIEF.md), applied line by line:
-     - nothing here shows a price, mentions $OIL or touches a wallet;
+     - nothing here shows a price, mentions $OIL or touches a wallet (a cleared
+       challenge is said as just that: never a reward, never "ask a grown-up");
      - no countdown: a challenge from another day says so and still works;
      - the link carries a number and a day, never a name, and opens no way to
        contact anybody (/parents/ promises "no chat");
@@ -3128,6 +3147,9 @@ var FB_FAMILY_CODEC = (function(){
     /* HARD dependencies (check-layers.js reads this guard). */
     if(!C || !overlay || !card || !scoreEl) return;
 
+    var TAG = document.getElementById('fb-family');
+    var E1 = String((TAG && TAG.getAttribute && TAG.getAttribute('data-fb-e1')) || '');
+    if(!/^[A-Z0-9]{2,6}$/.test(E1)) E1 = '';
     var GAME = (String(location.hostname || '').split('.')[0] || 'game').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'game';
     var fmt = function(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
     var num = function(t){ var n = parseInt(String(t == null ? '' : t).replace(/[^0-9]/g, ''), 10); return isFinite(n) ? n : 0; };
@@ -3206,6 +3228,8 @@ var FB_FAMILY_CODEC = (function(){
       '.fb-fam-banner button{border:0;background:transparent;color:inherit;font:inherit;font-size:18px;line-height:1;padding:2px 6px;cursor:pointer}' +
       '.fb-fam-line{margin:6px 0 0;font-weight:700}' +
       '.fb-fam-line .go{color:var(--fb-amber,#f2a03d)}' +
+      '.fb-fam-clear{margin:6px 0 0;font-weight:700;color:var(--fb-amber,#f2a03d)}' +
+      '.fb-fam-clear[hidden]{display:none}' +
       '.fb-fam-share{display:block;margin:10px auto 0;border:2px solid currentColor;background:transparent;color:inherit;border-radius:999px;' +
         'padding:6px 16px;font:700 14px/1.2 system-ui,sans-serif;cursor:pointer;opacity:.9}' +
       '.fb-fam-share[hidden],.fb-fam-link[hidden]{display:none}' +
@@ -3240,6 +3264,9 @@ var FB_FAMILY_CODEC = (function(){
 
     var line = document.createElement('p');
     line.className = 'fb-fam-line'; line.hidden = true;
+    var clearLine = document.createElement('p');
+    clearLine.className = 'fb-fam-clear'; clearLine.hidden = true;
+    clearLine.textContent = 'Today\u2019s challenge cleared \u2713';
     var share = document.createElement('button');
     share.type = 'button'; share.className = 'fb-fam-share'; share.hidden = true;
     share.textContent = 'Challenge family';
@@ -3251,7 +3278,26 @@ var FB_FAMILY_CODEC = (function(){
       retry.parentNode.insertBefore(share, retry.nextSibling);
       retry.parentNode.insertBefore(link, share.nextSibling);
       retry.parentNode.insertBefore(line, retry);
-    } else { card.appendChild(line); card.appendChild(share); card.appendChild(link); }
+      retry.parentNode.insertBefore(clearLine, retry);
+    } else { card.appendChild(line); card.appendChild(clearLine); card.appendChild(share); card.appendChild(link); }
+
+    /* E1: today's daily challenge, won. Every condition is read from the layer
+       that owns it, never assumed: the seed layer says whether this run was
+       today's (and not practice, and not a paid entry's private seed); the
+       game says whether it was won (window.FB_OUTRO.won, which it sets for the
+       ending screen). */
+    function clearedToday(){
+      try{
+        var S = window.FB_SEED, O = window.FB_OUTRO;
+        return !!(E1 && S && O && O.won === true && S.daily === true && !S.inPaid &&
+                  (S.value >>> 0) === (S.todaySeed() >>> 0));
+      }catch(e){ return false; }
+    }
+    function markCleared(){
+      var rec = C.read(document);
+      rec.cleared[E1 + '.' + C.dayIdx()] = 1;
+      C.write(rec, document, location);
+    }
 
     var lastScore = 0;
     share.addEventListener('click', function(){
@@ -3275,6 +3321,8 @@ var FB_FAMILY_CODEC = (function(){
       var score = num(scoreEl.textContent);
       lastScore = score;
       bank(score);
+      clearLine.hidden = true;
+      if(clearedToday()){ markCleared(); clearLine.hidden = false; }
       share.hidden = !(score > 0);
       link.hidden = true;
       if(CH){
@@ -3308,7 +3356,7 @@ var FB_FAMILY_CODEC = (function(){
     var mo = new MutationObserver(check), watch = { attributes: true, attributeFilter: ['class', 'hidden', 'style'] };
     mo.observe(overlay, watch);
     if(card !== overlay) mo.observe(card, watch);
-    window.FB_FAMILY = { game: GAME, challenge: CH };
+    window.FB_FAMILY = { game: GAME, challenge: CH, e1: E1 };
   }catch(e){ /* the family layer must never break a game */ }
 })();
 </script>
