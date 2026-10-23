@@ -46,8 +46,8 @@
 <nav class="nav" aria-label="Main"><ul>
 <li><a href="https://finnstergram.com/games/">Games</a></li>
 <li><a href="https://finnstergram.com/showcase/">Bots</a></li>
+<li><a href="https://finnstergram.com/parents/">Parents</a></li>
 <li><a href="https://finnstergram.com/holders/">Holders</a></li>
-<li><a href="https://finnstergram.com/roadmap/">Roadmap</a></li>
 </ul></nav>
 <button class="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Night mode"><span class="ts-track" aria-hidden="true"><span class="ts-thumb"><svg class="ts-sun" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#e8891c" d="M2 2h3v3H2zM3 0h1v1H3zM3 6h1v1H3zM0 3h1v1H0zM6 3h1v1H6zM1 1h1v1H1zM5 1h1v1H5zM1 5h1v1H1zM5 5h1v1H5z"/></svg><svg class="ts-moon" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3d3f9e" d="M2 0h3v1H2zM1 1h2v1H1zM0 2h2v3H0zM1 5h2v1H1zM2 6h3v1H2zM4 5h2v1H4z"/></svg></span></span></button>
 </div></header>
@@ -230,10 +230,10 @@ var namesReady = fetch('cabinet_names.csv?v='+Date.now(),{cache:'no-store'})
 fetch(CSV+'?v='+Date.now(),{cache:'no-store'})
   .then(function(r){ if(!r.ok) throw new Error('no csv');
     var lm=r.headers.get('Last-Modified');
-    document.getElementById('updated').textContent = lm ? ('Updated '+new Date(lm).toLocaleString('en-GB')) : 'Updated on each scanner run';
+    document.getElementById('updated').textContent = lm ? ('Updated '+new Date(lm).toLocaleString('en-GB')+' \u00b7 refreshes about every 15 minutes') : 'Refreshes about every 15 minutes';
     return r.text(); })
   .then(function(t){ return namesReady.then(function(){ render(parseCSV(t)); }); })
-  .catch(function(){ document.getElementById('updated').textContent='Board updates on each scanner run.';
+  .catch(function(){ document.getElementById('updated').textContent='This board refreshes about every 15 minutes.';
     render({cols:[],rows:[]}); });
 
 /* Tabs. Default is THIS SEASON, not all time: a live board a player can still
