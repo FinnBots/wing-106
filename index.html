@@ -2976,6 +2976,27 @@ if(!HEADLESS){
        when the layer bound (a reload onto a finished run). */
     evaluate();
 
+    /* A PAID SCORE THE PLAYER CAN TRACK (Founder 2026-10-23: "people pay OIL if they dont appear in a leaderboard it either
+       looks sloppy or scammy" ... "we cant drive engagement if there is no visable way to track"). When the paid layer
+       shows its "posted" sheet, say plainly that the run is recorded, when it will show, and where: the boards refresh
+       from the chain about every 15 minutes (factory/auto-scan.sh). The wallet layer is untouched: this only adds a line
+       beside the sheet's own text, once. */
+    try{
+      var sheet = $('postedSheet'), ptext = $('posted-text');
+      if(sheet && ptext){
+        var noteOnce = function(){
+          if(!has(sheet, 'show') || (sheet.querySelector && sheet.querySelector('.fb-posted-note'))) return;
+          var n = document.createElement('p'); n.className = 'fb-posted-note';
+          n.appendChild(document.createTextNode('\u2713 Recorded on the blockchain. Leaderboards refresh about every 15 minutes, so your run will appear there shortly. '));
+          var a = document.createElement('a'); a.href = 'leaderboard.html'; a.textContent = 'See the leaderboard \u2192';
+          n.appendChild(a);
+          ptext.parentNode.insertBefore(n, ptext.nextSibling);
+        };
+        new MutationObserver(noteOnce).observe(sheet, { attributes:true, attributeFilter:['class'] });
+        noteOnce();
+      }
+    }catch(e){}
+
     /* exposed for verify-outro.js: a gate must be able to ask the layer what it
        did, rather than infer it from pixels. Reading it changes nothing. */
     window.FB_OUTRO_STATE = function(){
@@ -3116,7 +3137,7 @@ var FB_FAMILY_CODEC = (function(){
         that only counts while the page is visible and the player touched it
         in the last minute. A tab left open is not play.
         finnstergram.com/parents/ turns that record into the grown-ups' report.
-     2. FAMILY CHALLENGE. The run-over card gets a "Challenge family" button
+     2. FAMILY CHALLENGE. The run-over card gets a "Challenge your family" button
         that shares a link carrying the score and the UTC day: "Can you beat
         my 4,210 on BOTMAN today?". Everybody plays the same seed each day, so
         whoever opens it plays the same run. Opening one shows the target, and
@@ -3277,7 +3298,7 @@ var FB_FAMILY_CODEC = (function(){
     clearLine.textContent = 'Today\u2019s challenge cleared \u2713';
     var share = document.createElement('button');
     share.type = 'button'; share.className = 'fb-fam-share'; share.hidden = true;
-    share.textContent = 'Challenge family';
+    share.textContent = 'Challenge your family';
     var link = document.createElement('input');
     link.className = 'fb-fam-link'; link.readOnly = true; link.hidden = true;
     link.setAttribute('aria-label', 'Challenge link');
@@ -3326,7 +3347,7 @@ var FB_FAMILY_CODEC = (function(){
       if(nav.clipboard && nav.clipboard.writeText){
         nav.clipboard.writeText(text + ' ' + url).then(function(){
           share.textContent = 'Link copied ✓';
-          setTimeout(function(){ share.textContent = 'Challenge family'; }, 2000);
+          setTimeout(function(){ share.textContent = 'Challenge your family'; }, 2000);
         }, showLink);
         return;
       }
