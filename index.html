@@ -2815,8 +2815,10 @@ if(!HEADLESS){
       var lines = String(text||'').trim().split(/\r?\n/);
       if(!lines.length || !lines[0]) return null;
       var head = lines[0].split(',').map(function(s){ return s.trim(); });
-      var col = head.indexOf('score_adjusted');
-      if(col < 0) col = head.indexOf('score_raw');
+      /* the REAL score first (R6, 2026-10-28): the player's own run is never multiplied, so a
+         rank beat read off a holder's x1.5 column compared two different units */
+      var col = head.indexOf('score_raw');
+      if(col < 0) col = head.indexOf('score_adjusted');
       if(col < 0) col = head.indexOf('score');
       if(col < 0) return null;                       // not a board we understand
       var out = [];
