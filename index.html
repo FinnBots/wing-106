@@ -198,6 +198,16 @@ canvas{ touch-action:none; }
 @supports (height:100dvh){ .wrap, .app{ min-height:100dvh; } }
 .topbar{ padding-top:var(--fb-safe-t); }
 .controls, .actions{ padding-bottom:max(var(--fb-safe-b), 2px); }
+/* The game's NAME outranks everything else in its bar. With the daily chip and the
+   Free/Paid pills in one row, 25 games' names were cut on a 375px phone — LINKBOT,
+   BOTWORD, SUMBOT to one letter — and four more on a tablet; Mr Bot's on a laptop
+   too (its .app column is 520px). First-time-user QA, 2026-10-28; check-controls.js
+   TITLE CUT. The title never shrinks; the bar may wrap, and the daily chip is the
+   first thing to move to a second line. A bar that fits stays one line: wrap only
+   acts on an overflow, so no screen that was fine changes. */
+.topbar{ flex-wrap:wrap; row-gap:4px; }
+.topbar .title{ flex:1 0 auto; }   /* basis = its text: many games set flex:1 (basis 0), so no-shrink alone left it the leftovers */
+.topbar .fb-seed{ order:99; }
 
 
 /* NOTE on the [class] attribute selectors below: a game's own rule for
@@ -294,6 +304,45 @@ canvas{ touch-action:none; }
                           grid-template-columns:repeat(3,40px) !important;
                           grid-template-rows:repeat(3,32px) !important; }
 }
+
+/* ---- 8b. A KEY IS ITS OWN TARGET — pad keys never overlap on a touch screen --
+   First-time-user QA, 2026-10-28. Sections 5, 6 and 7 grow every key to a thumb
+   target (54px, the centre key 64px) — but the GRID the keys sit in is the
+   game's own, sized for the old keys (HOPBOT 44x40 cells, Mr Bot 40x34). The keys
+   spilled out of their cells and over each other: in HOPBOT the right edge of ◀
+   was GO (hop forward, into traffic); in BOTMAN the centre key is MUTE, so a
+   child steering down or right muted the game. 26 device rows on 11 games,
+   measured by check-controls.js in real Chrome; every byte-pin passed.
+
+   The fix is count-agnostic, because every pad on the roster places its keys by
+   an explicit grid-area: drop the game's fixed tracks and let the implicit
+   tracks size themselves (grid-auto-*). A track can then never be smaller than
+   the key in it, so two keys cannot share a pixel — by construction, whatever
+   shape the pad is (3x3 cross, 2x2 diamond, HOVERBOT's 2-column cluster).
+     .dpad          is a grid on EVERY game, so its keys also get one exact size
+                    (the centre key included): a 64px centre made the pad taller
+                    than the screen had room for.
+     .cluster.move  is a grid on HOVERBOT and FLEX on WINGBOT/BubbleBot. Only the
+                    track properties are set — inert on a flex row — never a
+                    key size, which on a flex row would shrink keys to their text.
+
+   !important for the reason section 8 gives: per-game `.dpad{...}` rules from
+   older passes (BOTMAN, RIVETBOT) re-declare the tracks and would otherwise win.
+   Scoped to touch and to small screens only; section 8 (a mouse with room to
+   spare) cannot match at the same time, so the laptop pad is untouched. */
+@media (pointer:coarse), (max-width:560px), (orientation:landscape) and (max-height:560px){
+  .controls[class], .actions[class]{ --fb-key:52px; }
+  .controls[class] .dpad, .actions[class] .dpad,
+  .controls[class] .cluster.move, .actions[class] .cluster.move{
+    grid-template-columns:none !important; grid-template-rows:none !important;
+    grid-auto-columns:max-content !important; grid-auto-rows:max-content !important; }
+  .controls[class] .dpad, .actions[class] .dpad{ gap:4px !important; }
+  .controls[class] .dpad > *, .actions[class] .dpad > *{
+    width:var(--fb-key) !important; height:var(--fb-key) !important;
+    min-width:0 !important; min-height:0 !important; margin:0 !important; }
+}
+@media (orientation:landscape) and (max-height:560px){ .controls[class], .actions[class]{ --fb-key:44px; } }
+@media (min-width:700px) and (min-height:561px) and (pointer:coarse){ .controls[class], .actions[class]{ --fb-key:60px; } }
 
 /* ---- 9. STICKINESS FURNITURE -------------------------------------------
    Rendered by the fb-sticky script: a personal-best chip in the topbar and a
@@ -469,15 +518,18 @@ canvas{ touch-action:none; }
       box.innerHTML = '<span class="fb-seed-lbl"><span class="l">Your paid run</span><span class="s">PAID</span></span>';
       return;
     }
+    /* The label names the run you are ON; the button names what it DOES. On a phone the
+       old pair read "PRACTICE | Today" — to a child who reads literally, "practise today",
+       the opposite of what tapping it does (first-time-user QA, 2026-10-28). */
     var long  = !rng ? 'Today' : FB.daily ? 'Daily Challenge' : 'Practice run';
-    var short = !rng ? 'TODAY' : FB.daily ? 'DAILY' : 'PRACTICE';
+    var short = !rng ? 'TODAY' : FB.daily ? "TODAY'S RUN" : 'PRACTICE RUN';
     box.innerHTML =
       '<span class="fb-seed-lbl"><span class="l">' + long + '</span>' +
         '<span class="s">' + short + '</span></span>' +
       '<span class="fb-seed-day">' +
         (rng && !FB.daily ? 'random' : FB.dayKey()) + '</span>' +
       (rng ? '<button class="fb-seed-btn" type="button">' +
-             (FB.daily ? 'Practise' : 'Today') + '</button>' : '');
+             (FB.daily ? 'Practise' : 'Back to today') + '</button>' : '');
     var btn = box.querySelector('.fb-seed-btn');
     if (btn) btn.addEventListener('click', function(){
       FB.practice(FB.daily);
@@ -1107,7 +1159,7 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
   <!-- Kid-safety confirm gate (before any wallet code runs) -->
   <div class="sheet" id="confirmSheet"><div class="panel">
     <h2>Play WINGBOT — Paid</h2>
-    <p>One entry = one run. Costs <b>25 OIL</b> to the treasury (a sink). Pays nothing out — you're playing for a leaderboard spot. Bot holders: score ×1.5.<br/><br/>A <b>fun ranking</b> — not verified.</p>
+    <p>One entry = one run. It costs <b>25 OIL</b>, which is spent: it is not paid back and there is no prize. You're playing for a place on the leaderboard. If your wallet holds a FinnBot, your score counts ×1.5.<br/><br/>Needs a grown-up's crypto wallet. A <b>fun ranking</b>, not an official one.</p>
     <button class="again" id="confirmEnter" type="button">Connect &amp; Pay</button>
     <button class="ghostbtn" id="confirmBack" type="button">Cancel</button>
   </div></div>
@@ -2365,6 +2417,8 @@ if(!HEADLESS){
      4. Enter / Space / Return restarts from the run-over card.  The single
         biggest drop-off in an arcade loop is the pause between runs — the
         fastest possible replay is the strongest retention feature there is.
+     5. A run WAITS while the player reads the "Paid" explainer.  See the
+        section at the end of this file.
    ========================================================================== */
 (function(){
   try{
@@ -2413,7 +2467,7 @@ if(!HEADLESS){
                          '<small>best ' + fmt(best) + ' · run ' + runs + ' this session</small>';
       } else {
         best = score; save('best', best);
-        line.innerHTML = '<span class="go">First run banked</span>' +
+        line.innerHTML = '<span class="go">First score saved</span>' +
                          '<small>beat ' + fmt(best) + ' next time</small>';
       }
       paintChip(isNew);
@@ -2453,6 +2507,41 @@ if(!HEADLESS){
         e.preventDefault();
       }
     }, true);
+  }catch(e){ /* stickiness must never break a game */ }
+})();
+
+/* ---- 5. A RUN WAITS WHILE THE PLAYER READS ---------------------------------
+   First-time-user QA, 2026-10-28: tapping "Paid · 25 OIL" opens the kid-safety
+   explainer (#confirmSheet) over a LIVE run. HOPBOT kept running behind it and
+   the player lost two lives — one hit by traffic, one to the clock — while
+   reading what "Paid" means. The sheet is identical on every paid game and no
+   game's loop looked at it.
+
+   The hold is one clock, not 32 loop edits. While the sheet is showing, the
+   frame timestamp AND performance.now() both stand still, so every engine sees
+   dt = 0: nothing moves, the clock does not tick, the screen still draws. When
+   the sheet closes both resume MINUS the time held. Both move together because
+   most engines seed `last = performance.now()` and then read the rAF timestamp:
+   shifting only one would hand them a negative dt after the first pause.
+   (Nothing else reads performance.now(): not the wallet libraries, not any
+   shared layer — checked 2026-10-28. Date.now() is untouched.)
+   Gate: check-pause.js drives each game in real Chrome and fails one whose run
+   moves while the sheet is open, or does not move again after it closes. */
+(function(){
+  try{
+    if(window.__fbHold) return;
+    var P = window.performance, RAF = window.requestAnimationFrame;
+    if(!P || typeof P.now !== 'function' || typeof RAF !== 'function') return;
+    var pnow = P.now.bind(P), raf = RAF.bind(window), off = 0, heldAt = null;
+    var holding = function(){ var c = document.getElementById('confirmSheet'); return !!(c && c.classList.contains('show')); };
+    var clock = function(t){
+      if(holding()){ if(heldAt === null) heldAt = t; return heldAt - off; }
+      if(heldAt !== null){ off += Math.max(0, t - heldAt); heldAt = null; }
+      return t - off;
+    };
+    P.now = function(){ return clock(pnow()); };
+    window.requestAnimationFrame = function(cb){ return raf(function(t){ return cb(clock(t)); }); };
+    window.__fbHold = { held: function(){ return heldAt !== null; } };
   }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
@@ -2707,7 +2796,7 @@ if(!HEADLESS){
       for(var i=0;i<prior.length;i++) if(prior[i] > score) better++;
       var place = better + 1;
       var best = prior.length ? prior[0] : 0;
-      if(!prior.length) return { title:'ROOKIE BOT', note:'First run banked. Everything from here beats it.', frac: 0.5 };
+      if(!prior.length) return { title:'ROOKIE BOT', note:'First score saved. Every run from here can beat it.', frac: 0.5 };
       if(place === 1){
         return score > best
           ? { title:'PERSONAL BEST', note:'Your best run yet — the old one was <b>' + fmt(best) + '</b>.', frac: 1 }
@@ -2866,7 +2955,7 @@ if(!HEADLESS){
           /* a board is published and nobody is on it. Say it plainly: a fact,
              with no call to action — this screen is seen by children. */
           MODE = 'empty';
-          paint(me.title, '', 'Nobody has banked a score on this board yet. ' + me.note, me.frac);
+          paint(me.title, '', 'Nobody has a score on this board yet. ' + me.note, me.frac);
         } else {
           MODE = 'personal';
           paint(me.title, '', me.note, me.frac);
