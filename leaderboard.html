@@ -19,6 +19,8 @@
   .board-tabs { margin: 0 0 var(--s3); }
   .board-tabs .tab { cursor: pointer; font: 700 15px/1 var(--font-body); }
   .board-tabs .tab[aria-selected="true"] { background: var(--plum-deep); color: #fff; }
+  .board-tabs .div { cursor: pointer; font: 700 15px/1 var(--font-body); }
+  .board-tabs .div[aria-selected="true"] { background: var(--plum-deep); color: #fff; }
   .seasonline, .updated { color: var(--muted); font-size: 14px; margin: 0 0 var(--s3); }
   .board { overflow-x: auto; }
   .board table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -58,7 +60,7 @@
       <p class="crumbs"><a href="https://finnstergram.com/games/">Games</a> <span aria-hidden="true">›</span> <a href="https://finnstergram.com/games/wingbot/">WINGBOT</a></p>
       <p class="eyebrow"><span class="blink" aria-hidden="true"></span>Daily leaderboard</p>
       <h1>WINGBOT</h1>
-      <p id="board-lede">A fresh board every day and a new season every month, so everyone starts level. Anyone can look — ranked runs are for Bot holders.</p>
+      <p id="board-lede">A fresh board every day and a new season every month, so everyone starts level. Anyone can look — ranked runs need a grown-up&rsquo;s wallet. Everyone is ranked on the same real score, and Bot holders also get a table of their own.</p>
       <div class="cta">
         <a class="btn btn-amber" href="https://wing.finnstergram.com/">Play WINGBOT</a>
         <a class="btn btn-plain" href="https://finnstergram.com/games/wingbot/">How to play</a>
@@ -73,6 +75,12 @@
         <button class="tab chip" role="tab" id="tab-season" data-view="season" aria-selected="true">This season</button>
         <button class="tab chip" role="tab" id="tab-all"    data-view="all"    aria-selected="false">All time</button>
       </div>
+      <!-- R6 (Founder 2026-10-28): DIVISIONS replace the holder x1.5. One real-score ranking; the Holders
+           division is the same runs, holders only. -->
+      <div class="chips board-tabs" id="divs" role="tablist" aria-label="Division">
+        <button class="div chip" role="tab" id="div-everyone" data-div="everyone" aria-selected="true">Everyone</button>
+        <button class="div chip" role="tab" id="div-holders"  data-div="holders"  aria-selected="false">Bot holders</button>
+      </div>
       <p class="seasonline" id="seasonline"></p>
       <div class="panel board">
         <table>
@@ -81,7 +89,7 @@
         </table>
       </div>
       <p class="updated" id="updated">Loading…</p>
-      <p class="board-note"><b>A fun ranking — not verified.</b> Scores are recorded, not replay-checked. Ranked by the game&rsquo;s headline score; the fastest time breaks a tie. Bot holders score ×1.5.</p>
+      <p class="board-note"><b>A fun ranking — not verified.</b> Scores are recorded, not replay-checked. Ranked by the game&rsquo;s headline score, the same for every player; the fastest time breaks a tie. The Bot holders tab shows the same runs, holders only.</p>
     </div>
   </section>
 </main>
@@ -90,10 +98,11 @@
 "use strict";
 /* Generic FinnBots leaderboard — reads a scanner-written CSV SAME-ORIGIN and
    adapts to its header, so ANY sink-leaderboard game can reuse this file by
-   changing only the two consts below. Zero RPC / zero wallet. The holder x1.5
-   is already baked into the *_adjusted column by the scanner. Records, does NOT
-   verify. Columns shown: Player, the *_adjusted metric (rank key), any other
-   numeric fields, and Time. */
+   changing only the two consts below. Zero RPC / zero wallet. Records, does NOT
+   verify. Columns shown: Player, the RAW metric (rank key), any other numeric
+   fields, and Time. R6 (2026-10-28): the holder x1.5 is retired — the page ranks on
+   *_raw, so a board written before R6 (its *_adjusted inflated) still ranks fairly,
+   and holders get a Division of their own (bot_holder) instead. */
 var CSV = 'leaderboard_wing.csv';          // scanner-written CSV, served beside this page
 var GAME = 'WINGBOT';
 
@@ -114,18 +123,19 @@ var NAMES={};
 function nameFor(r){ var w=r.wallet||''; return NAMES[(r.season||'')+'|'+w] || NAMES[utcSeason(new Date())+'|'+w] || ''; }
 function who(r){ var n=nameFor(r); return n ? esc(n) : shortAddr(r.wallet); }
 function mmss(ms){ var t=Math.floor((Number(ms)||0)/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
-function label(k){ return k.replace(/_adjusted$/,'').replace(/_/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
+function label(k){ return k.replace(/_(adjusted|raw)$/,'').replace(/_/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
 
 function plan(cols){
-  // choose the rank metric (a *_adjusted col, else 'score', else first numeric) and
+  // choose the rank metric (the *_raw of a *_adjusted pair, else that *_adjusted, else 'score') and
   // the display columns (metric first, then other numeric non-noise cols, then Time).
   var noise={rank:1,wallet:1,bot_holder:1,score_signature:1,entry_signature:1,sig_prefix:1,
              season:1,day:1,posted_at:1};
   var adjusted=cols.filter(function(c){return /_adjusted$/.test(c);});
-  var metric=adjusted[0] || (cols.indexOf('score')>=0?'score':null);
+  var rawOf=adjusted[0] ? adjusted[0].replace(/_adjusted$/,'_raw') : null;
+  var metric=(rawOf && cols.indexOf(rawOf)>=0) ? rawOf : (adjusted[0] || (cols.indexOf('score')>=0?'score':null));
   var display=[]; if(metric) display.push(metric);
   cols.forEach(function(c){
-    if(noise[c]) return; if(c===metric) return; if(/_raw$/.test(c)) return;
+    if(noise[c]) return; if(c===metric) return; if(/_raw$/.test(c) || /_adjusted$/.test(c)) return;
     if(c==='time_ms'||c==='time') return;   // time rendered last
     display.push(c);
   });
@@ -146,10 +156,13 @@ function seasonName(key){
   return M[Number(p[1])-1]+' '+p[0];
 }
 var VIEW='season';
+var DIV='everyone';
 var LAST=null;
+function isHolder(r){ var h=((r.bot_holder||'').trim().toLowerCase()); return h==='yes'||h==='true'||h==='1'; }
 
 function viewRows(parsed, view){
   var rows=parsed.rows.slice();
+  if(DIV==='holders') rows=rows.filter(isHolder);
   var now=new Date();
   if(view==='today')  return rows.filter(function(r){ return r.day===utcDay(now); });
   if(view==='season') return rows.filter(function(r){ return r.season===utcSeason(now); });
@@ -172,7 +185,8 @@ function viewRows(parsed, view){
 var EMPTY={
   today:  ['No runs today yet.', 'Today&rsquo;s board is wide open — first run takes the top spot.'],
   season: ['No runs this season yet.', 'The board reset for '+'{{season}}'+'. Everyone starts level.'],
-  all:    ['No runs recorded yet.', 'Be the first name on this cabinet.']
+  all:    ['No runs recorded yet.', 'Be the first name on this cabinet.'],
+  holders:['No Bot holder has a run here yet.', 'The Everyone tab shows every ranked run.']
 };
 
 function dated(cols){ return cols.indexOf('day')>=0 && cols.indexOf('season')>=0; }
@@ -180,7 +194,7 @@ function render(parsed){
   LAST=parsed;
   var tabs=document.getElementById('tabs');
   if(parsed.cols.length && !dated(parsed.cols)){ VIEW='all'; if(tabs) tabs.hidden=true;
-    var lede=document.getElementById('board-lede'); if(lede) lede.textContent='Every ranked run, best score per player. Anyone can look — ranked runs are for Bot holders.'; }
+    var lede=document.getElementById('board-lede'); if(lede) lede.textContent='Every ranked run, best score per player, ranked on the same real score for everyone. Anyone can look.'; }
   var head=document.getElementById('head'), tb=document.getElementById('rows');
   var sl=document.getElementById('seasonline');
   var now=new Date();
@@ -190,7 +204,7 @@ function render(parsed){
   var shown = parsed.rows.length ? viewRows(parsed, VIEW) : [];
   if(!shown.length){
     head.innerHTML='<th class="rank">#</th><th>Player</th>';
-    var e=EMPTY[VIEW]||EMPTY.all;
+    var e=(DIV==='holders' && parsed.rows.length) ? EMPTY.holders : (EMPTY[VIEW]||EMPTY.all);
     tb.innerHTML='<tr><td colspan="2" class="empty"><b>'+e[0]+'</b>'+
                  e[1].replace('{{season}}', seasonName(utcSeason(now)))+'</td></tr>';
     return;
@@ -207,10 +221,9 @@ function render(parsed){
   var span=2+p.display.length+(p.timeCol?1:0);
   var html='';
   rows.forEach(function(r,i){
-    var holder=((r.bot_holder||'').trim().toLowerCase());
-    holder=(holder==='yes'||holder==='true'||holder==='1');
+    var holder=isHolder(r);
     html+='<tr><td class="rank">'+(i+1)+'</td>'+
-      '<td class="who" title="Tap to copy the wallet address" data-full="'+esc(r.wallet||'')+'" data-name="'+esc(nameFor(r))+'">'+who(r)+(holder?'<span class="h">Bot ×1.5</span>':'')+'</td>';
+      '<td class="who" title="Tap to copy the wallet address" data-full="'+esc(r.wallet||'')+'" data-name="'+esc(nameFor(r))+'">'+who(r)+(holder?'<span class="h">Bot holder</span>':'')+'</td>';
     p.display.forEach(function(c,ci){
       var v=r[c]; var num=Number(v);
       html+='<td class="num'+(ci===0?' metric':'')+'">'+(isFinite(num)?num:esc(v||'—'))+'</td>'; });
@@ -235,6 +248,18 @@ fetch(CSV+'?v='+Date.now(),{cache:'no-store'})
   .then(function(t){ return namesReady.then(function(){ render(parseCSV(t)); }); })
   .catch(function(){ document.getElementById('updated').textContent='This board refreshes about every 15 minutes.';
     render({cols:[],rows:[]}); });
+
+/* Divisions (R6). Everyone by default: the one ranking every player is in. */
+try{ var sd=localStorage.getItem('fb-lb-div'); if(sd==='holders'||sd==='everyone') DIV=sd; }catch(e){}
+Array.prototype.forEach.call(document.querySelectorAll('.div'), function(btn){
+  btn.setAttribute('aria-selected', String(btn.getAttribute('data-div')===DIV));
+  btn.addEventListener('click', function(){
+    DIV = btn.getAttribute('data-div');
+    Array.prototype.forEach.call(document.querySelectorAll('.div'), function(b){ b.setAttribute('aria-selected', String(b === btn)); });
+    try{ localStorage.setItem('fb-lb-div', DIV); }catch(e){}
+    render(LAST || {cols:[],rows:[]});
+  });
+});
 
 /* Tabs. Default is THIS SEASON, not all time: a live board a player can still
    win is the reason seasons exist, so it is what they should land on. */
