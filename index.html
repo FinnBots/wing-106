@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899 https://cloudflareinsights.com https://finnbots-events.mart-kin1000.workers.dev; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://finnstergram.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net https://finnstergram.com; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899 https://cloudflareinsights.com https://finnbots-events.mart-kin1000.workers.dev; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>WINGBOT — a FinnBots game</title>
 <!--fb:share-->
@@ -19,9 +19,18 @@
 <link rel="icon" href="https://finnstergram.com/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="https://finnstergram.com/apple-touch-icon.png">
 <!--/fb:share-->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style id="fb-fonts">
+/* fb-fonts — the FinnBots lettering, served by finnstergram.com itself (2026-10-28).
+   GENERATED into every game page by apply-fonts.js; never hand-edit a game's copy.
+   Until 10-28 every game pulled these two fonts from Google Fonts, which handed each player's IP
+   address to Google before the game started. The site already self-hosts the same files
+   (website/site/assets/fonts, both SIL OFL, latin subset) and GitHub Pages serves them with
+   Access-Control-Allow-Origin: *, so a game on any *.finnstergram.com host can load them. */
+@font-face { font-family: 'Jersey 15'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(https://finnstergram.com/assets/fonts/jersey15-latin.woff2) format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url(https://finnstergram.com/assets/fonts/plus-jakarta-sans-latin.woff2) format('woff2'); }
+</style>
 <style>
   :root{
     --plum:#5f4c57; --plum-deep:#3e323a; --amber:#f2a03d; --electric:#3a6ff7;
