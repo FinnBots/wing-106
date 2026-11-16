@@ -1080,6 +1080,20 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
   .fb-outro-sparks{ display:none }
 }
 </style>
+<style id="fb-coach-css">
+/* FinnBots COACH LAYER — the goal + the one control over the live game (templates/coach-layer.js) */
+.fb-coach{ position:fixed; left:50%; top:22%; transform:translateX(-50%); z-index:80; pointer-events:none;
+  width:max-content; max-width:min(88vw,420px); box-sizing:border-box; padding:12px 18px 13px; border-radius:14px;
+  background:rgba(32,24,38,.92); border:2px solid var(--fb-amber,#f2a03d); box-shadow:4px 4px 0 0 rgba(0,0,0,.45);
+  color:#fff; text-align:center; display:flex; flex-direction:column; gap:6px;
+  animation:fb-coach-in .35s ease-out both; transition:opacity .35s, transform .35s; }
+.fb-coach-goal{ font-family:var(--disp,system-ui); font-weight:400; font-size:clamp(18px,4.6vw,24px); line-height:1.15; letter-spacing:.3px; }
+.fb-coach-how{ font-family:var(--body,system-ui); font-size:clamp(13px,3.4vw,15px); line-height:1.3; color:var(--fb-amber,#f2a03d); font-weight:700; }
+.fb-coach-how::before{ content:"\25B6\FE0E  "; font-size:.8em; }
+.fb-coach-out{ opacity:0; transform:translateX(-50%) translateY(-8px); }
+@keyframes fb-coach-in{ from{ transform:translateX(-50%) translateY(10px); } }   /* position only: a stalled animation (a background tab, a throttled timeline) must still SHOW the box */
+@media (prefers-reduced-motion: reduce){ .fb-coach{ animation:none; transition:none; } }
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -3509,6 +3523,76 @@ var FB_FAMILY_CODEC = (function(){
     if(card !== overlay) mo.observe(card, watch);
     window.FB_FAMILY = { game: GAME, challenge: CH, e1: E1 };
   }catch(e){ /* the family layer must never break a game */ }
+})();
+</script>
+<script id="fb-coach" data-fb-goal="Hold the bay as the swarm dives — dodge the tractor beam." data-fb-touch="Drag to move · tap to fire" data-fb-keys="← → move · Space fires">
+/* FinnBots COACH LAYER — the first 30 seconds (brief 1, 2026-10-27).
+   Founder: "First 30 seconds of each of the six: starts instantly, the goal is obvious without reading, the first
+   death/win feels good." Before this, a first-time player landed on a 115-193 word How to play card and had to read
+   it and tap Got it before anything moved — on a phone, the whole screen.
+
+   What it does, once, at load:
+   1. If the game's boot opened its rules card (#rulesOverlay.show), close it the way a player's Got it does — by
+      clicking #rulesClose, so the game's own close handler runs — and drop the focus that handler puts on the info
+      button (a Space press would otherwise open the card again). The full rules stay one tap away behind the info
+      button; nothing in them is removed.
+   2. Show TWO lines over the live game: the goal and the one control, from the site's own data
+      (website/data/games.json `short` + `controls`, written onto this tag by apply-coach.js). It never blocks a tap
+      (pointer-events: none) and it fades on the first touch, click or key, or after 9 seconds.
+   It does nothing on a wallet return (?phantom_action= or ?src=browse): that path belongs to the wallet layer.
+   SOURCE OF TRUTH: this file + coach-layer.css, injected by apply-coach.js, pinned by verify-game.js, driven by
+   verify-coach.js. Never hand-edit a game's copy. */
+(function () {
+  'use strict';
+  var tag = document.getElementById('fb-coach');   /* its own tag carries the words; no tag, no words — never a reason to stop */
+  var at = function (k) { return (tag && tag.getAttribute(k)) || ''; };
+  var q = '';
+  try { q = window.location.search || ''; } catch (e) { /* no location: carry on */ }
+  if (/[?&](phantom_action=|src=browse\b)/.test(q)) return;
+  var goal = at('data-fb-goal'), touch = at('data-fb-touch'), keys = at('data-fb-keys');
+
+  /* 1. the rules card the boot opened: closed as Got it would close it */
+  var rules = document.getElementById('rulesOverlay');
+  function closeBootRules() {
+    if (!rules || !rules.classList.contains('show')) return false;
+    var btn = document.getElementById('rulesClose');
+    if (btn && btn.click) btn.click();
+    if (rules.classList.contains('show')) rules.classList.remove('show');
+    var info = document.getElementById('infoBtn');
+    if (info && document.activeElement === info && info.blur) info.blur();
+    return true;
+  }
+  closeBootRules();
+  /* a game that opens the card a moment after boot (a deferred init) is closed too — within the first 1.5 s only,
+     so a player who opens it on purpose later is never overruled */
+  var watch = null;
+  if (rules && window.MutationObserver) {
+    watch = new MutationObserver(function () { closeBootRules(); });
+    watch.observe(rules, { attributes: true, attributeFilter: ['class'] });
+    setTimeout(function () { if (watch) { watch.disconnect(); watch = null; } }, 1500);
+  }
+
+  /* 2. the goal + the one control, over the live game */
+  if (!goal) return;
+  var coarse = false;
+  try { coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches; } catch (e) { /* desktop */ }
+  var hint = (coarse ? touch : keys) || touch || keys;
+  var box = document.createElement('div');
+  box.className = 'fb-coach';
+  box.setAttribute('role', 'status');
+  box.setAttribute('aria-live', 'polite');
+  var g = document.createElement('b'); g.className = 'fb-coach-goal'; g.textContent = goal; box.appendChild(g);
+  if (hint) { var h = document.createElement('span'); h.className = 'fb-coach-how'; h.textContent = hint; box.appendChild(h); }
+  document.body.appendChild(box);
+  var gone = false;
+  function hide() {
+    if (gone) return; gone = true;
+    box.classList.add('fb-coach-out');
+    setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 400);
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) { document.removeEventListener(ev, hide, true); });
+  }
+  ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) { document.addEventListener(ev, hide, true); });
+  setTimeout(hide, 9000);
 })();
 </script>
 <script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
