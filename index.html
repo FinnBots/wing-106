@@ -3627,6 +3627,14 @@ var FB_FAMILY_CODEC = (function(){
    Origin header, so a payload cannot claim to be another game. Nothing is sent
    off the live domain (local playtests and gates never send). If the browser
    will not store anything (private mode), it sends at most once per page.
+
+   WHERE A VISIT CAME FROM (v3, 2026-11-16; Founder: "build the per-channel tracking"). Our posts' links carry a short
+   tag (?from=x, ?from=discord); otherwise the referring SITE'S NAME only (t.co -> x, google.* -> search, our own pages
+   -> site, anything else -> its registrable name, e.g. ref:example.com), or "direct". Never a full address, never a
+   path, never anything about the person. Each channel is a handful of counts (visits, touched, runs, finished) that
+   ride in the SAME once-a-day request; a visit is counted even if the game was never touched (that is the leak we
+   need to see). The ?from= tag is removed from the address bar at once, so a player who shares the page does not
+   pass our tag on.
    ========================================================================== */
 (function(){
   try{
@@ -3647,8 +3655,30 @@ var FB_FAMILY_CODEC = (function(){
       return (s && s < 600) ? 'phone' : 'tablet';
     })();
 
+    /* where this visit came from (see the header): a tag on our own links, else the referring site's name */
+    var TAGS = { x:1, discord:1, site:1, parents:1, holders:1, email:1, qr:1 };
+    var chan = (function(){
+      var q = String(location.search || ''), m = /[?&]from=([^&#]*)/.exec(q);
+      if(/[?&](phantom_action=|src=browse\b)/.test(q)) return 'wallet';            // a wallet return is the same visit coming back
+      if(m){ var t = String(m[1]).toLowerCase();
+        try{ if(window.history && history.replaceState){                         // our tag never travels on in a share
+          var rest = q.replace(/([?&])from=[^&#]*&?/, '$1').replace(/[?&]$/, '');
+          history.replaceState(history.state, '', (location.pathname || '/') + rest + (location.hash || '')); } }catch(e){}
+        return TAGS[t] ? t : 'tag-other'; }
+      var h = (/^https?:\/\/([^\/:?#]+)/i.exec(String(document.referrer || '')) || [])[1];
+      if(!h) return 'direct';
+      h = h.toLowerCase().replace(/^www\./, '');
+      if(/(^|\.)finnstergram\.com$/.test(h)) return 'site';
+      if(/^(t\.co|x\.com|twitter\.com|mobile\.twitter\.com|m\.twitter\.com)$/.test(h)) return 'x';
+      if(/(^|\.)(discord\.com|discordapp\.com|discord\.gg)$/.test(h)) return 'discord';
+      if(/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|yahoo\.[a-z.]+|ecosia\.org|search\.brave\.com|yandex\.[a-z.]+|baidu\.com)$/.test(h)) return 'search';
+      var p = h.split('.').filter(Boolean), k = (p.length > 2 && /^(co|com|org|net|ac|gov|edu)$/.test(p[p.length-2]) && p[p.length-1].length === 2) ? 3 : 2;
+      var name = p.slice(-k).join('.');
+      return /^[a-z0-9.-]{3,40}$/.test(name) ? 'ref:' + name : 'ref:other';
+    })();
+
     /* this visit, as it happens */
-    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, sentThisPage = false;
+    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, chanBanked = false, sentThisPage = false;
 
     /* 1. played: the first input that is not on the page's own chrome */
     var chrome = function(t){
@@ -3675,8 +3705,8 @@ var FB_FAMILY_CODEC = (function(){
     var store = null;
     function load(){
       try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
-           if(o && o.c && typeof o.c.r === 'number') return o; }catch(e){}
-      return { sent:'', c:ZERO() };
+           if(o && o.c && typeof o.c.r === 'number'){ if(!o.ch || typeof o.ch !== 'object') o.ch = {}; return o; } }catch(e){}
+      return { sent:'', c:ZERO(), ch:{} };
     }
     function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
 
@@ -3685,19 +3715,26 @@ var FB_FAMILY_CODEC = (function(){
       var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q };
       var any = d.s || d.r || d.p;
       store = load();
+      /* the channel pile: EVERY visit counts once (touched or not), then what it did */
+      var key = chan;
+      if(!store.ch[key] && Object.keys(store.ch).length >= 6) key = 'other';   // at most 6 channels in one day's request
+      var cc = store.ch[key] || (store.ch[key] = [0, 0, 0, 0]);               // [visits, touched, runs, finished]
+      if(!chanBanked){ cc[0]++; chanBanked = true; }
       if(any){
         if(!visitBanked){ store.c.n++; visitBanked = true; }
         store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q;
+        cc[1] += d.s; cc[2] += d.r; cc[3] += d.f;
         banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q };
       }
       var kept = save(store);
-      var c = store.c;
-      if(!(c.s || c.r || c.p)) return;
+      var c = store.c, visits = 0;
+      for(var ck in store.ch) visits += store.ch[ck][0];
+      if(!(c.s || c.r || c.p) && !visits) return;
       if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
-      var body = JSON.stringify({ v:2, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q });
+      var body = JSON.stringify({ v:3, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, ch:store.ch });
       if(navigator.sendBeacon(END, body)){
         sentThisPage = true;
-        store.sent = day(); store.c = ZERO(); save(store);
+        store.sent = day(); store.c = ZERO(); store.ch = {}; save(store);
       }
     }
     document.addEventListener('visibilitychange', function(){
