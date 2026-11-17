@@ -1079,6 +1079,11 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
   .fb-outro-bar span{ transition:none }
   .fb-outro-sparks{ display:none }
 }
+/* one more game (2026-11-17): a quiet text link under the replay button — never a second big button */
+.fb-outro-more{ display:block; margin:12px auto 0; font-size:13px; text-align:center; color:inherit; opacity:.85;
+  text-decoration:underline; text-underline-offset:3px; }
+.fb-outro-more b{ text-transform:uppercase; letter-spacing:.04em; }
+.fb-outro-more:hover, .fb-outro-more:focus-visible{ opacity:1; }
 </style>
 <style id="fb-coach-css">
 /* FinnBots COACH LAYER — the goal + the one control over the live game (templates/coach-layer.js) */
@@ -3054,6 +3059,7 @@ if(!HEADLESS){
       paintRank(score);
       if(win) sparks();
       box.hidden = false;
+      placeMore();
       /* The card grew: a landscape phone may now need to scroll to the retry
          button, and the device layer cannot know that. Nudge it into view. */
       settle = setTimeout(function(){
@@ -3062,8 +3068,32 @@ if(!HEADLESS){
       }, reduced ? 0 : 1500);
     }
 
+    /* ---- ONE MORE GAME (2026-11-17; Founder: "the next 3 simple actions that will drive engagement"). Under the
+       replay button, quieter than it: today's starter — the homepage's own pick (the starting six by UTC day, as
+       site.js todayOf) — or the next one when today's is THIS game. Tagged ?from=site-outro so the report shows what it
+       brought. Never above or instead of replay: the run's own hook stays first. SIX is generated from
+       website/data/games.json by apply-outro.js and checked by sweep (a starter change = re-apply the roster). */
+    var SIX = [/*FB-SIX*/{ n:"HOPBOT", u:"https://hop.finnstergram.com" }, { n:"LINKBOT", u:"https://linkbot.finnstergram.com" }, { n:"BOTMAN", u:"https://botman.finnstergram.com" }, { n:"BOTWORD", u:"https://botword.finnstergram.com" }, { n:"Bot Jumper", u:"https://jump.finnstergram.com" }, { n:"SUMBOT", u:"https://sumbot.finnstergram.com" }/*/FB-SIX*/];
+    var next = (function(){
+      try{ var here = String(location.hostname || ''), d = Math.floor(Date.now() / 864e5);
+        for(var k = 0; k < SIX.length; k++){ var g = SIX[(d + k) % SIX.length];
+          if(g.u.indexOf('//' + here) < 0) return g; } }catch(e){}
+      return null; })();
+    var more = null;
+    function placeMore(){
+      if(!next) return;
+      if(!more){ more = document.createElement('a'); more.className = 'fb-outro-more';
+        more.href = next.u + '/?from=site-outro'; more.rel = 'noopener';
+        more.appendChild(document.createTextNode('Try today\u2019s game: '));
+        var b = document.createElement('b'); b.textContent = next.n; more.appendChild(b);
+        more.appendChild(document.createTextNode(' \u2192')); }
+      if(more.parentNode !== card || card.lastChild !== more) card.appendChild(more);   // last: below the replay button
+      more.hidden = false;
+    }
+
     function hide(){
       box.hidden = true;
+      if(more) more.hidden = true;
       document.body.classList.remove('fb-outro-on');
       if(settle){ clearTimeout(settle); settle = null; }
       land();
@@ -3140,7 +3170,8 @@ if(!HEADLESS){
                rank:!q('.fb-outro-rank').hidden, mode:MODE,
                rankTitle:q('.fb-outro-title span').textContent,
                bar:(q('.fb-outro-bar span').style.width||''),
-               counting:box.classList.contains('fb-outro-counting') };
+               counting:box.classList.contains('fb-outro-counting'),
+               more: (more && !more.hidden && more.parentNode === card) ? { href: more.href, name: next.n, last: card.lastChild === more } : null };
     };
   }catch(e){ /* an ending screen must never break a game */ }
 })();
