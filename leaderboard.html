@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://finnstergram.com; font-src 'self' https://finnstergram.com; img-src 'self' data: https://finnstergram.com https://arweave.net https://*.arweave.net; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://finnstergram.com; font-src 'self' https://finnstergram.com; img-src 'self' data: https://finnstergram.com https://arweave.net https://*.arweave.net; connect-src 'self' https://finnbots.github.io; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WINGBOT — Daily leaderboard — FinnBots</title>
 <meta name="description" content="Today&rsquo;s scores, this season and all time for WINGBOT, a free FinnBots game.">
@@ -236,11 +236,20 @@ function render(parsed){
   });
 }
 
-var namesReady = fetch('cabinet_names.csv?v='+Date.now(),{cache:'no-store'})
+/* THE BOARDS COME FROM THE CLOUD (2026-11-17; Founder: "Lets just build A"): FinnBots/finnbots-boards publishes every
+   board from the chain every 15 minutes, Mac awake or not. This page reads it there first and falls back to the copy
+   beside it, so a board can never go blank because one host is down. */
+var BOARDS = 'https://finnbots.github.io/finnbots-boards/boards/';
+function getBoard(name){
+  var bust = '?v='+Date.now();
+  return fetch(BOARDS+name+bust,{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('cloud '+r.status); return r; })
+    .catch(function(){ return fetch(name+bust,{cache:'no-store'}); });
+}
+var namesReady = getBoard('cabinet_names.csv')
   .then(function(r){ return r.ok ? r.text() : ''; })
   .then(function(t){ parseCSV(t).rows.forEach(function(r){ if(r.season&&r.wallet&&r.name) NAMES[r.season+'|'+r.wallet]=r.name; }); })
   .catch(function(){});
-fetch(CSV+'?v='+Date.now(),{cache:'no-store'})
+getBoard(CSV)
   .then(function(r){ if(!r.ok) throw new Error('no csv');
     var lm=r.headers.get('Last-Modified');
     document.getElementById('updated').textContent = lm ? ('Updated '+new Date(lm).toLocaleString('en-GB')+' \u00b7 refreshes about every 15 minutes') : 'Refreshes about every 15 minutes';
