@@ -3635,6 +3635,15 @@ var FB_FAMILY_CODEC = (function(){
    ride in the SAME once-a-day request; a visit is counted even if the game was never touched (that is the leak we
    need to see). The ?from= tag is removed from the address bar at once, so a player who shares the page does not
    pass our tag on.
+
+   v4 (2026-11-17; Founder: "build all three"):
+     - PER-POST TAGS: ?from=x-w49a (a channel tag + a post id of 2-10 a-z/0-9) is kept whole, so the report can say
+       which POST brought players. Anything else after the dash is tag-other.
+     - PLAYED AGAIN: a visit that finished one run and went on to another (t). Each channel row gains it as a 5th count.
+     - COMING BACK: the device keeps ONE date per game - the day it first played here - and never sends it. Each visit
+       that touches the game is counted in one of three piles (u): [first day, back within 7 days, back after 7 days].
+       A device that already played before v4 (it has a last-send date) counts from that date, so a regular is not
+       mistaken for a newcomer on the day this ships. Still no id: the date stays on the device, only the pile leaves.
    ========================================================================== */
 (function(){
   try{
@@ -3644,7 +3653,8 @@ var FB_FAMILY_CODEC = (function(){
     if(!navigator.sendBeacon) return;
     var $ = function(id){ return document.getElementById(id); };
     var KEY = 'fb:' + host.split('.')[0] + ':counts';
-    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0 }; };
+    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0, t:0, u:[0, 0, 0] }; };
+    var FIRST = 'fb:' + host.split('.')[0] + ':first';                    // the day this device first played here (never sent)
     var day = function(){ return new Date().toISOString().slice(0, 10); };
 
     var dev = (function(){
@@ -3664,7 +3674,9 @@ var FB_FAMILY_CODEC = (function(){
         try{ if(window.history && history.replaceState){                         // our tag never travels on in a share
           var rest = q.replace(/([?&])from=[^&#]*&?/, '$1').replace(/[?&]$/, '');
           history.replaceState(history.state, '', (location.pathname || '/') + rest + (location.hash || '')); } }catch(e){}
-        return TAGS[t] ? t : 'tag-other'; }
+        if(TAGS[t]) return t;
+        var pt = /^([a-z]+)-([a-z0-9]{2,10})$/.exec(t);                          // a per-post tag: x-w49a
+        return (pt && TAGS[pt[1]]) ? t : 'tag-other'; }
       var h = (/^https?:\/\/([^\/:?#]+)/i.exec(String(document.referrer || '')) || [])[1];
       if(!h) return 'direct';
       h = h.toLowerCase().replace(/^www\./, '');
@@ -3678,7 +3690,7 @@ var FB_FAMILY_CODEC = (function(){
     })();
 
     /* this visit, as it happens */
-    var v = { s:0, r:0, p:0, f:0, q:0 }, banked = { s:0, r:0, p:0, f:0, q:0 }, visitBanked = false, chanBanked = false, sentThisPage = false;
+    var v = { s:0, r:0, p:0, f:0, q:0, t:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = false;
 
     /* 1. played: the first input that is not on the page's own chrome */
     var chrome = function(t){
@@ -3698,40 +3710,56 @@ var FB_FAMILY_CODEC = (function(){
         on = now;
       }).observe(el, { attributes:true, attributeFilter:['class'] });
     }
-    edge($('overOverlay'), function(){ v.r++; v.s = 1; v.f = 1; });
+    edge($('overOverlay'), function(){ v.r++; v.s = 1; v.f = 1; if(v.r >= 2) v.t = 1; });
     edge($('paidOverlay'), function(){ v.p++; v.q = 1; });
 
     /* the device's pile of unsent counts */
     var store = null;
     function load(){
       try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
-           if(o && o.c && typeof o.c.r === 'number'){ if(!o.ch || typeof o.ch !== 'object') o.ch = {}; return o; } }catch(e){}
+           if(o && o.c && typeof o.c.r === 'number'){ if(!o.ch || typeof o.ch !== 'object') o.ch = {};
+             if(typeof o.c.t !== 'number') o.c.t = 0; if(!Array.isArray(o.c.u) || o.c.u.length !== 3) o.c.u = [0, 0, 0]; return o; } }catch(e){}
       return { sent:'', c:ZERO(), ch:{} };
     }
     function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
 
+    /* which pile a touched visit goes in: 0 = the device's first day here, 1 = back within 7 days, 2 = back after 7.
+       null = storage will not keep a date (private mode): counted nowhere rather than guessed. */
+    function backPile(prevSent){
+      var t = day(), f = null;
+      try{ f = localStorage.getItem(FIRST); }catch(e){ return null; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(f || '')){
+        f = (/^\d{4}-\d{2}-\d{2}$/.test(prevSent || '') && prevSent < t) ? prevSent : t;   // played before v4: count from then
+        try{ localStorage.setItem(FIRST, f); if(localStorage.getItem(FIRST) !== f) return null; }catch(e){ return null; }
+      }
+      var gap = Math.round((Date.parse(t) - Date.parse(f)) / 864e5);
+      return gap <= 0 ? 0 : gap <= 7 ? 1 : 2;
+    }
+
     /* bank what this visit added since the last bank, then send the pile if today has not had a send */
     function flush(){
-      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q };
+      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q, t:v.t - banked.t };
       var any = d.s || d.r || d.p;
       store = load();
       /* the channel pile: EVERY visit counts once (touched or not), then what it did */
       var key = chan;
       if(!store.ch[key] && Object.keys(store.ch).length >= 6) key = 'other';   // at most 6 channels in one day's request
-      var cc = store.ch[key] || (store.ch[key] = [0, 0, 0, 0]);               // [visits, touched, runs, finished]
+      var cc = store.ch[key] || (store.ch[key] = [0, 0, 0, 0, 0]);            // [visits, touched, runs, finished, played again]
+      if(cc.length < 5) cc.push(0);
       if(!chanBanked){ cc[0]++; chanBanked = true; }
       if(any){
         if(!visitBanked){ store.c.n++; visitBanked = true; }
-        store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q;
-        cc[1] += d.s; cc[2] += d.r; cc[3] += d.f;
-        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q };
+        store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q; store.c.t += d.t;
+        cc[1] += d.s; cc[2] += d.r; cc[3] += d.f; cc[4] += d.t;
+        if(v.s && !backBanked){ var bp = backPile(store.sent); if(bp !== null) store.c.u[bp]++; backBanked = true; }
+        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t };
       }
       var kept = save(store);
       var c = store.c, visits = 0;
       for(var ck in store.ch) visits += store.ch[ck][0];
       if(!(c.s || c.r || c.p) && !visits) return;
       if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
-      var body = JSON.stringify({ v:3, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, ch:store.ch });
+      var body = JSON.stringify({ v:4, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, t:c.t, u:c.u, ch:store.ch });
       if(navigator.sendBeacon(END, body)){
         sentThisPage = true;
         store.sent = day(); store.c = ZERO(); store.ch = {}; save(store);
@@ -3741,7 +3769,7 @@ var FB_FAMILY_CODEC = (function(){
       if(document.visibilityState === 'hidden') flush();
     });
     addEventListener('pagehide', flush);
-    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q }, store:load() }; };
+    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t }, store:load() }; };
   }catch(e){ /* analytics must never break a game */ }
 })();
 </script>
