@@ -3680,6 +3680,13 @@ var FB_FAMILY_CODEC = (function(){
        that touches the game is counted in one of three piles (u): [first day, back within 7 days, back after 7 days].
        A device that already played before v4 (it has a last-send date) counts from that date, so a regular is not
        mistaken for a newcomer on the day this ships. Still no id: the date stays on the device, only the pile leaves.
+
+   v5 (2026-11-18; Founder: "Yes, clean it"): A VISIT IS A PERSON. Automated page loads ran this layer too: 19 of the
+   counter's first 24 "game visits" (16-17 Nov) were on the three games the crawler spike hit, came in direct and
+   never touched the game. Now nothing about a page is banked or sent until it has seen ONE real input from a person:
+   a mouse move, a touch, a key or a wheel (isTrusted - a script's synthetic event does not count). A person who
+   looks and leaves still moves a pointer or a thumb, so the leak we need to see stays visible; a renderer that
+   loads and closes leaves no trace. Cloudflare's page views remain the "every load" number.
    ========================================================================== */
 (function(){
   try{
@@ -3728,6 +3735,12 @@ var FB_FAMILY_CODEC = (function(){
     /* this visit, as it happens */
     var v = { s:0, r:0, p:0, f:0, q:0, t:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = false;
 
+    /* 0. a PERSON is here (v5): any real input at all, chrome or game. Until then nothing is banked or sent. */
+    var human = false;
+    var person = function(e){ if(!e || e.isTrusted !== false) human = true; };
+    ['pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(function(t){
+      addEventListener(t, person, { capture:true, passive:true }); });
+
     /* 1. played: the first input that is not on the page's own chrome */
     var chrome = function(t){
       return !!(t && t.closest && t.closest('button, a, input, select, textarea, summary, .overlay, .sheet, .topbar'));
@@ -3774,6 +3787,7 @@ var FB_FAMILY_CODEC = (function(){
 
     /* bank what this visit added since the last bank, then send the pile if today has not had a send */
     function flush(){
+      if(!human) return;                                         // v5: no person seen - a page load is not a visit
       var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q, t:v.t - banked.t };
       var any = d.s || d.r || d.p;
       store = load();
