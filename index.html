@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://finnstergram.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net https://finnstergram.com; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899 https://cloudflareinsights.com https://finnbots-events.mart-kin1000.workers.dev https://finnbots.github.io; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" id="fb-csp" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://finnstergram.com; img-src 'self' data: blob: https://arweave.net https://*.arweave.net https://finnstergram.com; connect-src 'self' https://finnbots-rpc.mart-kin1000.workers.dev http://127.0.0.1:8899 https://cloudflareinsights.com https://finnbots-events.finnstergram.com https://finnbots.github.io; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>WINGBOT — a FinnBots game</title>
 <!--fb:share-->
@@ -3692,7 +3692,7 @@ var FB_FAMILY_CODEC = (function(){
    ========================================================================== */
 (function(){
   try{
-    var END = 'https://finnbots-events.mart-kin1000.workers.dev/e';
+    var END = 'https://finnbots-events.finnstergram.com/e';
     var host = String(location.hostname || '');
     if(!/\.finnstergram\.com$/.test(host)) return;           // live games only
     if(!navigator.sendBeacon) return;
