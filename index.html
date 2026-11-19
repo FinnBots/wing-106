@@ -3711,7 +3711,7 @@ var FB_FAMILY_CODEC = (function(){
     })();
 
     /* where this visit came from (see the header): a tag on our own links, else the referring site's name */
-    var TAGS = { x:1, discord:1, site:1, parents:1, holders:1, email:1, qr:1 };
+    var TAGS = { x:1, discord:1, site:1, parents:1, holders:1, email:1, qr:1, bsky:1, tg:1, itch:1, masto:1 };   // + the automated channels (11-19)
     var chan = (function(){
       var q = String(location.search || ''), m = /[?&]from=([^&#]*)/.exec(q);
       if(/[?&](phantom_action=|src=browse\b)/.test(q)) return 'wallet';            // a wallet return is the same visit coming back
@@ -3728,6 +3728,9 @@ var FB_FAMILY_CODEC = (function(){
       if(/(^|\.)finnstergram\.com$/.test(h)) return 'site';
       if(/^(t\.co|x\.com|twitter\.com|mobile\.twitter\.com|m\.twitter\.com)$/.test(h)) return 'x';
       if(/(^|\.)(discord\.com|discordapp\.com|discord\.gg)$/.test(h)) return 'discord';
+      if(/^(bsky\.app|go\.bsky\.app)$/.test(h)) return 'bsky';
+      if(/^(t\.me|telegram\.me|telegram\.org|web\.telegram\.org)$/.test(h)) return 'tg';
+      if(/(^|\.)itch\.io$/.test(h)) return 'itch';
       if(/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|yahoo\.[a-z.]+|ecosia\.org|search\.brave\.com|yandex\.[a-z.]+|baidu\.com)$/.test(h)) return 'search';
       var p = h.split('.').filter(Boolean), k = (p.length > 2 && /^(co|com|org|net|ac|gov|edu)$/.test(p[p.length-2]) && p[p.length-1].length === 2) ? 3 : 2;
       var name = p.slice(-k).join('.');
