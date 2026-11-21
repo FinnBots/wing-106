@@ -1099,6 +1099,13 @@ body:not(.mode-paid) .app .facts{ display:block !important; }
 .fb-coach-how::before{ content:"\25B6\FE0E  "; font-size:.8em; }
 .fb-coach-out{ opacity:0; transform:translateX(-50%) translateY(-8px); }
 @keyframes fb-coach-in{ from{ transform:translateX(-50%) translateY(10px); } }   /* position only: a stalled animation (a background tab, a throttled timeline) must still SHOW the box */
+/* placed in free space beside the board by coach-layer.js (data-fb-at = above|below|left|right) */
+.fb-coach.fb-coach-at{ transform:none; animation-name:fb-coach-in-at; }
+.fb-coach.fb-coach-at.fb-coach-out{ transform:translateY(-8px); }
+.fb-coach.fb-coach-tight{ padding:5px 12px 6px; gap:1px; border-radius:10px; box-shadow:3px 3px 0 0 rgba(0,0,0,.45); }
+.fb-coach-tight .fb-coach-goal{ font-size:clamp(15px,4vw,18px); }
+.fb-coach-tight .fb-coach-how{ font-size:clamp(12px,3.2vw,13px); }
+@keyframes fb-coach-in-at{ from{ transform:translateY(10px); } }
 @media (prefers-reduced-motion: reduce){ .fb-coach{ animation:none; transition:none; } }
 </style>
 </head>
@@ -2566,7 +2573,15 @@ if(!HEADLESS){
     var P = window.performance, RAF = window.requestAnimationFrame;
     if(!P || typeof P.now !== 'function' || typeof RAF !== 'function') return;
     var pnow = P.now.bind(P), raf = RAF.bind(window), off = 0, heldAt = null;
-    var holding = function(){ var c = document.getElementById('confirmSheet'); return !!(c && c.classList.contains('show')); };
+    /* 6. ...AND UNTIL THE FIRST TOUCH (2026-11-20, the first-minute review: SUMBOT's round clock — which pays 2 points for
+       every second left — and the clocks of BOTWORD, LINKBOT and JAMBOT ran down while a first-time player read the
+       coach's goal line, and Flappy Bot killed a player who had not touched it yet). Nothing moves until the player's
+       first touch, click or key; the coach stays up until then as the start card. A wallet return resumes at once. */
+    var touched = false;
+    try { touched = /[?&](phantom_action=|src=browse\b)/.test(location.search || ''); } catch (e) { touched = true; }
+    var touch = function(){ touched = true; ['pointerdown','touchstart','keydown'].forEach(function(ev){ document.removeEventListener(ev, touch, true); }); };
+    if(!touched) ['pointerdown','touchstart','keydown'].forEach(function(ev){ document.addEventListener(ev, touch, true); });
+    var holding = function(){ if(!touched) return true; var c = document.getElementById('confirmSheet'); return !!(c && c.classList.contains('show')); };
     var clock = function(t){
       if(holding()){ if(heldAt === null) heldAt = t; return heldAt - off; }
       if(heldAt !== null){ off += Math.max(0, t - heldAt); heldAt = null; }
@@ -2574,7 +2589,7 @@ if(!HEADLESS){
     };
     P.now = function(){ return clock(pnow()); };
     window.requestAnimationFrame = function(cb){ return raf(function(t){ return cb(clock(t)); }); };
-    window.__fbHold = { held: function(){ return heldAt !== null; } };
+    window.__fbHold = { held: function(){ return heldAt !== null; }, waiting: function(){ return !touched; } };
   }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
@@ -3574,7 +3589,7 @@ var FB_FAMILY_CODEC = (function(){
       clicking #rulesClose, so the game's own close handler runs — and drop the focus that handler puts on the info
       button (a Space press would otherwise open the card again). The full rules stay one tap away behind the info
       button; nothing in them is removed.
-   2. Show TWO lines over the live game: the goal and the one control, from the site's own data
+   2. Show TWO lines beside the live game (3. below says where): the goal and the one control, from the site's own data
       (website/data/games.json `short` + `controls`, written onto this tag by apply-coach.js). It never blocks a tap
       (pointer-events: none) and it fades on the first touch, click or key, or after 9 seconds.
    It does nothing on a wallet return (?phantom_action= or ?src=browse): that path belongs to the wallet layer.
@@ -3622,15 +3637,100 @@ var FB_FAMILY_CODEC = (function(){
   var g = document.createElement('b'); g.className = 'fb-coach-goal'; g.textContent = goal; box.appendChild(g);
   if (hint) { var h = document.createElement('span'); h.className = 'fb-coach-how'; h.textContent = hint; box.appendChild(h); }
   document.body.appendChild(box);
+
+  /* 3. WHERE: in free space, never over the game (2026-11-20 — measured on every game: at phone size the box covered the
+     top 44-93px of the board on 31 of 37 games — SUMBOT's target, BOTWORD's first row, BOTMAN's maze — while 80-220px of
+     the screen above or below the board sat empty; on laptop and landscape it covered every board, with the room BESIDE
+     it). The board is the largest canvas on screen. Bands are tried in order — above it, below it, left, right — and a
+     spot is free only when every sampled point hits the page's own background (body, or a wrapper as big as a third of
+     the screen): never the board, the top bar, a control or a word — the full box first, then a SLIM one. No free spot
+     (a tablet, where the board fills the screen): the slim box over the top bar (data-fb-at="bar"). Only if even that
+     would touch the board does it sit over the game — as high as it goes, over the board's top edge, never its middle —
+     and says so (data-fb-at="over"); verify-coach --screen measures how much of the board it covers. */
+  function board() {
+    var best = null, area = 0;
+    [].slice.call(document.querySelectorAll('canvas')).forEach(function (c) {
+      var r = c.getBoundingClientRect(), a = r.width * r.height;
+      if (a > area && r.width > 100 && r.height > 100 && r.bottom > 0 && r.top < innerHeight) { best = r; area = a; }
+    });
+    return best;
+  }
+  function free(x, y, w, h) {
+    var W = innerWidth, H = innerHeight, big = W * H / 3;
+    if (x < 0 || y < 0 || x + w > W || y + h > H) return false;
+    for (var i = 0; i < 5; i++) for (var j = 0; j < 3; j++) {
+      var px = x + 2 + (w - 4) * i / 4, py = y + 2 + (h - 4) * j / 2, el = document.elementFromPoint(px, py);
+      if (!el || el === document.body || el === document.documentElement) continue;
+      if (el.tagName === 'CANVAS') return false;
+      var r = el.getBoundingClientRect();
+      if (r.width * r.height < big) return false;
+    }
+    return true;
+  }
+  function place() {
+    if (gone || !box.parentNode) return;
+    var c = board(); if (!c) return;
+    var W = innerWidth, H = innerHeight, cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
+    var bands = [
+      { x0: 0, x1: W, y0: 0, y1: c.top, ys: function (h, M) { return [c.top - M - h, (c.top - h) / 2, M]; } },
+      { x0: 0, x1: W, y0: c.bottom, y1: H, ys: function (h, M) { return [c.bottom + M, (c.bottom + H - h) / 2, H - M - h]; } },
+      { x0: 0, x1: c.left, y0: 0, y1: H, ys: function (h) { return [cy - h / 2, c.top, c.bottom - h]; } },
+      { x0: c.right, x1: W, y0: 0, y1: H, ys: function (h) { return [cy - h / 2, c.top, c.bottom - h]; } }
+    ];
+    box.style.visibility = 'hidden';
+    box.classList.add('fb-coach-at');
+    for (var t = 0; t < 2; t++) {                       /* the full box, then the slim one */
+      box.classList.toggle('fb-coach-tight', t === 1);
+      var M = t ? 4 : 8;
+      for (var b = 0; b < bands.length; b++) for (var mw = 420; mw >= 210; mw -= 105) {   /* wide, then narrower: a gap between two pads */
+        var B = bands[b], bw = B.x1 - B.x0 - 2 * M;
+        if (bw < 200 || B.y1 - B.y0 < 40) continue;
+        box.style.maxWidth = Math.min(bw, mw) + 'px'; box.style.left = '0px'; box.style.top = '0px';
+        var w = box.offsetWidth, h = box.offsetHeight;
+        if (h > B.y1 - B.y0 - 2 * M || h > (t ? 92 : 128)) continue;   /* never a tall thin column of words */
+        var x = b < 2 ? Math.max(B.x0 + M, Math.min(B.x1 - M - w, cx - w / 2)) : B.x0 + (B.x1 - B.x0 - w) / 2;
+        var ys = B.ys(h, M);
+        for (var k = 0; k < ys.length; k++) {
+          var y = Math.max(B.y0 + M, Math.min(B.y1 - M - h, ys[k]));
+          if (free(x, y, w, h)) { put(x, y, ['above', 'below', 'left', 'right'][b]); return; }
+        }
+      }
+    }
+    /* no free spot (a tablet: the board fills the screen, as it should): the slim box over the TOP BAR — the title and
+       the Free/Paid strip are covered for a few seconds, never the game. Allowed only if it stays off the board. */
+    box.style.maxWidth = Math.min(W - 8, 420) + 'px'; box.style.left = '0px'; box.style.top = '0px';
+    var w2 = box.offsetWidth, h2 = box.offsetHeight;
+    var x2 = Math.max(4, Math.min(W - 4 - w2, cx - w2 / 2));
+    if (c.top - 2 - h2 >= 2) { put(x2, Math.max(2, (c.top - h2) / 2), 'bar'); return; }
+    /* still no room: as high as it goes, so it covers the board's top EDGE (its frame) rather than its middle, and
+       says so — verify-coach --screen measures how much of the board it covers */
+    put(x2, 2, 'over');
+  }
+  function put(x, y, at) {
+    box.style.left = Math.round(x) + 'px'; box.style.top = Math.round(y) + 'px';
+    box.setAttribute('data-fb-at', at); box.style.visibility = '';
+  }
+  try { place(); } catch (e) { box.style.visibility = ''; }
+  var again = function () { try { place(); } catch (e) { box.style.visibility = ''; } };
+  if (window.requestAnimationFrame) requestAnimationFrame(again);
+  setTimeout(again, 300); setTimeout(again, 1200);
+  window.addEventListener('resize', again);
+  window.addEventListener('load', again);
+
   var gone = false;
   function hide() {
     if (gone) return; gone = true;
+    window.removeEventListener('resize', again);
     box.classList.add('fb-coach-out');
     setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 400);
     ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) { document.removeEventListener(ev, hide, true); });
   }
   ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) { document.addEventListener(ev, hide, true); });
-  setTimeout(hide, 9000);
+  /* gone by itself after 9 s — unless the run is still WAITING for the first touch (stickiness.js section 6): then the
+     coach IS the start card, and taking it away would leave a frozen game with nothing saying what to do */
+  (function auto() { setTimeout(function () {
+    if (window.__fbHold && window.__fbHold.waiting && window.__fbHold.waiting()) return auto();
+    hide(); }, 9000); })();
 })();
 </script>
 <script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
