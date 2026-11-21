@@ -186,6 +186,12 @@ body{ min-height:100svh; overscroll-behavior:none; -webkit-text-size-adjust:100%
   user-select:none; -webkit-user-select:none;
 }
 canvas{ touch-action:none; }
+/* the DIRECTION keys: a thumb ROLLS across them (stickiness.js section 7). `manipulation` lets the phone read a
+   sliding thumb as a scroll and CANCEL the press mid-slide; on the pads and the cluster that holds them, nothing but
+   the game may own the touch (Founder 2026-11-21, on a phone: "the d pad style doesnt work"). Also no long-press
+   callout on any key. */
+#padL,#padR,#padU,#padD,#padUL,#padUR,#padDL,#padDR,.dpad,.controls{ touch-action:none; }
+.ctl,button{ -webkit-touch-callout:none; }
 
 /* ---- 3. hit targets on anything with a finger --------------------------- */
 @media (pointer:coarse){
@@ -2590,6 +2596,41 @@ if(!HEADLESS){
     P.now = function(){ return clock(pnow()); };
     window.requestAnimationFrame = function(cb){ return raf(function(t){ return cb(clock(t)); }); };
     window.__fbHold = { held: function(){ return heldAt !== null; }, waiting: function(){ return !touched; } };
+  }catch(e){ /* stickiness must never break a game */ }
+})();
+
+/* ---- 7. A THUMB ROLLS ACROSS THE D-PAD ---------------------------------------
+   Founder, 2026-11-21, after playing on a phone: "the d pad style doesnt work". Measured in real Chrome with real touch
+   events: hold ◀, slide the thumb onto ▶ without lifting — HOPBOT kept facing left, BOTMAN kept going left. A phone
+   CAPTURES a touch to the button it first landed on, so the ▶ key never hears the thumb; on a real d-pad you rock your
+   thumb, you do not lift and re-tap for every turn. Every game binds its pads the same way (pointerdown / pointerup on
+   #padL #padR #padU #padD, and the four diagonals), so this is one listener for all of them: when the finger moves onto
+   a different DIRECTION key, the old key gets a pointerup and the new one a pointerdown — exactly what lifting and
+   re-tapping would have sent — and when the finger lifts, the key it is on is released. Action keys (fire, jump, dig)
+   are never touched: they belong to the other thumb. Mouse input is left alone. Gate: check-dpad.js. */
+(function(){
+  try{
+    if(window.__fbRoll || typeof PointerEvent !== 'function') return; window.__fbRoll = true;
+    var DIR = /^pad(L|R|U|D|UL|UR|DL|DR)$/, cur = null, origin = null, pid = null;
+    var padOf = function(e){ while(e && e !== document.body){ if(e.id && DIR.test(e.id)) return e; e = e.parentElement; } return null; };
+    var send = function(el, type, src){ try{ el.dispatchEvent(new PointerEvent(type, { bubbles:true, cancelable:true, pointerId:src.pointerId,
+      pointerType:src.pointerType, isPrimary:src.isPrimary, clientX:src.clientX, clientY:src.clientY })); }catch(e){} };
+    document.addEventListener('pointerdown', function(e){
+      if(!e.isTrusted || e.pointerType === 'mouse') return;
+      var p = padOf(e.target); if(p){ cur = origin = p; pid = e.pointerId; }
+    }, true);
+    document.addEventListener('pointermove', function(e){
+      if(!cur || !e.isTrusted || e.pointerId !== pid) return;
+      var p = padOf(document.elementFromPoint(e.clientX, e.clientY));
+      if(p && p !== cur){ send(cur, 'pointerup', e); send(p, 'pointerdown', e); cur = p; }
+    }, true);
+    var end = function(e){
+      if(!cur || !e.isTrusted || e.pointerId !== pid) return;
+      if(cur !== origin) send(cur, e.type, e);          /* the browser releases the key the touch STARTED on; we release the one it is on */
+      cur = origin = pid = null;
+    };
+    document.addEventListener('pointerup', end, true);
+    document.addEventListener('pointercancel', end, true);
   }catch(e){ /* stickiness must never break a game */ }
 })();
 </script>
