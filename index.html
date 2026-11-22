@@ -192,6 +192,11 @@ canvas{ touch-action:none; }
    callout on any key. */
 #padL,#padR,#padU,#padD,#padUL,#padUR,#padDL,#padDR,.dpad,.controls{ touch-action:none; }
 .ctl,button{ -webkit-touch-callout:none; }
+/* ON A PHONE, SWIPE IS THE CONTROL (Founder 2026-11-22: "on phones swipe has to be the methid"): stickiness.js section 8
+   tags <html class="fb-swipe"> on a phone for a game whose games.json says how it is steered by gesture; the DIRECTION
+   keys go, the action keys stay. Tablets and laptops never get the class. */
+html.fb-swipe #padL,html.fb-swipe #padR,html.fb-swipe #padU,html.fb-swipe #padD,
+html.fb-swipe #padUL,html.fb-swipe #padUR,html.fb-swipe #padDL,html.fb-swipe #padDR{ display:none !important; }
 
 /* ---- 3. hit targets on anything with a finger --------------------------- */
 @media (pointer:coarse){
@@ -2608,7 +2613,12 @@ if(!HEADLESS){
     try { touched = /[?&](phantom_action=|src=browse\b)/.test(location.search || ''); } catch (e) { touched = true; }
     var touch = function(){ touched = true; ['pointerdown','touchstart','keydown'].forEach(function(ev){ document.removeEventListener(ev, touch, true); }); };
     if(!touched) ['pointerdown','touchstart','keydown'].forEach(function(ev){ document.addEventListener(ev, touch, true); });
-    var holding = function(){ if(!touched) return true; var c = document.getElementById('confirmSheet'); return !!(c && c.classList.contains('show')); };
+    /* ...after a short GRACE at load (2026-11-22, the roster first-minute sweep): FLAGBOT, LOOPBOT, MINEBOT and SUDOBOT
+       deal their board in on game time ("SUDOBOT IS SETTING A GRID…"), and the wait froze that intro — a child saw an
+       EMPTY board, and their first touch dug or opened a cell they could not see. The world runs for GRACE ms so every
+       intro lands, then holds until the first touch. Measured, not guessed: see check-pause's BOARD-READY line. */
+    var GRACE = 1600, graceEnd = pnow() + GRACE;
+    var holding = function(){ if(!touched && pnow() >= graceEnd) return true; var c = document.getElementById('confirmSheet'); return !!(c && c.classList.contains('show')); };
     var clock = function(t){
       if(holding()){ if(heldAt === null) heldAt = t; return heldAt - off; }
       if(heldAt !== null){ off += Math.max(0, t - heldAt); heldAt = null; }
@@ -2616,7 +2626,7 @@ if(!HEADLESS){
     };
     P.now = function(){ return clock(pnow()); };
     window.requestAnimationFrame = function(cb){ return raf(function(t){ return cb(clock(t)); }); };
-    window.__fbHold = { held: function(){ return heldAt !== null; }, waiting: function(){ return !touched; } };
+    window.__fbHold = { held: function(){ return heldAt !== null; }, waiting: function(){ return !touched; }, graceEnd: graceEnd, now: pnow };
   }catch(e){ /* stickiness must never break a game */ }
 })();
 
@@ -2653,6 +2663,61 @@ if(!HEADLESS){
     document.addEventListener('pointerup', end, true);
     document.addEventListener('pointercancel', end, true);
   }catch(e){ /* stickiness must never break a game */ }
+})();
+
+/* ---- 8. ON A PHONE, SWIPE IS THE CONTROL ---------------------------------------
+   Founder, 2026-11-22, verbatim: "this might be a dumb question but phones and ipads are all touchscreen so why use d pad ?"
+   then "you are the expert - I think on phones swipe has to be the methid". A d-pad on glass has no feel, takes a third
+   of the screen, and a thumb slides off it. On a PHONE (a coarse pointer, shortest side under 600px) the DIRECTION keys
+   are hidden (device-layer.css, html.fb-swipe) and the board is the control; tablets and laptops keep the keys. Action
+   keys (JUMP, FIRE, DIG, PUMP…) stay — the other thumb needs them. How each game steers is ITS data (games.json
+   controls.gesture, carried on the coach tag as data-fb-gesture): "native" games swipe or drag on their own; for
+   "layer" games this listener turns a drag on the board into the direction key the game already listens to — press
+   when the finger has moved 14px, held while it stays that way, switched when it turns, released when it lifts.
+   Gate: check-swipe.js (a REAL touch drag on every gesture game must move the hero). */
+(function(){
+  /* the coach tag that carries the gesture is placed AFTER this script, so read it once the page is parsed */
+  var boot = function(){ try{
+    if(window.__fbSwipe) return; window.__fbSwipe = true;
+    var tag = document.getElementById('fb-coach'), gest = tag && tag.getAttribute('data-fb-gesture');
+    if(!gest) return;
+    var phone = false;
+    try{ phone = window.matchMedia('(pointer: coarse)').matches && Math.min(window.innerWidth, window.innerHeight) < 600; }catch(e){}
+    if(!phone) return;
+    document.documentElement.classList.add('fb-swipe');
+    if(gest !== 'layer' || typeof PointerEvent !== 'function') return;
+    var byId = function(id){ return document.getElementById(id); };
+    var MAP = { R:['padR'], L:['padL'], U:['padU','padJump'], D:['padD'] };
+    var keyFor = function(d){ var l = MAP[d]; for(var i = 0; i < l.length; i++){ var e = byId(l[i]); if(e) return e; } return null; };
+    var send = function(el, type, src){ try{ el.dispatchEvent(new PointerEvent(type, { bubbles:true, cancelable:true, pointerId:src.pointerId,
+      pointerType:src.pointerType, isPrimary:src.isPrimary, clientX:src.clientX, clientY:src.clientY })); }catch(e){} };
+    var board = function(){ var best = null, a = 0; [].slice.call(document.querySelectorAll('canvas')).forEach(function(c){
+      var r = c.getBoundingClientRect(); if(r.width * r.height > a){ a = r.width * r.height; best = c; } }); return best; };
+    var pid = null, ox = 0, oy = 0, cur = null;
+    document.addEventListener('pointerdown', function(e){
+      if(!e.isTrusted || e.pointerType === 'mouse' || pid !== null) return;
+      if(e.target !== board()) return;                         /* the board only — never a button */
+      pid = e.pointerId; ox = e.clientX; oy = e.clientY; cur = null;
+    }, true);
+    document.addEventListener('pointermove', function(e){
+      if(e.pointerId !== pid || !e.isTrusted) return;
+      var dx = e.clientX - ox, dy = e.clientY - oy, ax = Math.abs(dx), ay = Math.abs(dy);
+      if(Math.max(ax, ay) < 14) return;
+      var k = keyFor(ax > ay ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+      if(!k || k === cur) return;
+      if(cur) send(cur, 'pointerup', e);
+      send(k, 'pointerdown', e); cur = k;
+      ox = e.clientX; oy = e.clientY;                         /* a turn is measured from where the last one began */
+    }, true);
+    var end = function(e){
+      if(e.pointerId !== pid || !e.isTrusted) return;
+      if(cur) send(cur, 'pointerup', e);
+      pid = null; cur = null;
+    };
+    document.addEventListener('pointerup', end, true);
+    document.addEventListener('pointercancel', end, true);
+  }catch(e){ /* stickiness must never break a game */ } };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 </script>
 <script id="fb-outro" data-fb-board="leaderboard_wing.csv">
@@ -3640,7 +3705,7 @@ var FB_FAMILY_CODEC = (function(){
   }catch(e){ /* the family layer must never break a game */ }
 })();
 </script>
-<script id="fb-coach" data-fb-goal="Hold the bay as the swarm dives — dodge the tractor beam." data-fb-touch="Drag to move · tap to fire" data-fb-keys="← → move · Space fires">
+<script id="fb-coach" data-fb-goal="Hold the bay as the swarm dives — dodge the tractor beam." data-fb-touch="Drag to move · tap to fire" data-fb-keys="← → move · Space fires" data-fb-gesture="native">
 /* FinnBots COACH LAYER — the first 30 seconds (brief 1, 2026-10-27).
    Founder: "First 30 seconds of each of the six: starts instantly, the goal is obvious without reading, the first
    death/win feels good." Before this, a first-time player landed on a 115-193 word How to play card and had to read
