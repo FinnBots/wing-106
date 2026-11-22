@@ -3752,6 +3752,28 @@ var FB_FAMILY_CODEC = (function(){
     setTimeout(function () { if (watch) { watch.disconnect(); watch = null; } }, 1500);
   }
 
+  /* 1b. a START CARD at boot (2026-11-22 first-minute sweep: Bot Merge's 60-word "Tap to start" card and Mr Bot's
+     "Start shift" card sat over the board — one more card to read and dismiss, which the coach exists to remove).
+     If the game shows a FREE start card (#startCard whose button is not a paid/wallet one), it is hidden and the game's
+     own start button is pressed on the player's first touch on the game. A touch on any other button (Free/Paid, ⓘ)
+     brings the card back untouched. Never on a wallet return (returned above). */
+  (function () {
+    var sc = document.getElementById('startCard'), sb = sc && sc.querySelector('button');
+    if (!sc || !sb || /oil|paid|wallet|connect|25/i.test(sb.textContent || '')) return;
+    var ov = sc.closest ? (sc.closest('.overlay') || sc) : sc;
+    var vis = function (e) { try { var r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; } catch (x) { return false; } };
+    if (!vis(sb)) return;
+    var prev = ov.style.display; ov.style.display = 'none'; ov.setAttribute('data-fb-autostart', '1');
+    var arm = function (e) {
+      if (!e.isTrusted) return;
+      ['pointerdown', 'keydown'].forEach(function (ev) { document.removeEventListener(ev, arm, true); });
+      ov.style.display = prev; ov.removeAttribute('data-fb-autostart');
+      var t = e.target, isUi = t && t.closest && t.closest('button, a, input, select, [role=button], .modebar');
+      if (!isUi && sb.click) sb.click();
+    };
+    ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, arm, true); });
+  })();
+
   /* 2. the goal + the one control, over the live game */
   if (!goal) return;
   var coarse = false;
