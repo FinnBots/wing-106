@@ -549,7 +549,7 @@ canvas{ touch-action:none; }
       '<span class="fb-seed-day">' +
         (rng && !FB.daily ? 'random' : FB.dayKey()) + '</span>' +
       (rng ? '<button class="fb-seed-btn" type="button">' +
-             (FB.daily ? 'Practise' : 'Back to today') + '</button>' : '');
+             (FB.daily ? 'Practice' : 'Back to today') + '</button>' : '');
     var btn = box.querySelector('.fb-seed-btn');
     if (btn) btn.addEventListener('click', function(){
       FB.practice(FB.daily);
@@ -590,7 +590,19 @@ canvas{ touch-action:none; }
        * so below 560px the chip drops the date and uses its short label. A
        * badge that costs a game its title is not worth the information. */
       '@media (max-width:560px){.fb-seed{font-size:10px;padding:3px 3px 3px 7px;gap:4px}' +
-      '.fb-seed-day{display:none}.fb-seed .l{display:none}.fb-seed .s{display:inline}}';
+      '.fb-seed-day{display:none}.fb-seed .l{display:none}.fb-seed .s{display:inline}}' +
+      /* ONE TOGGLE ROW (2026-11-21, design review of the starting six on a phone): the day chip and Free/Paid sat
+       * in TWO different places — Free/Paid beside the title on 26 games, a whole row of its own under the topbar
+       * on 10 (HOPBOT, Bot Jumper, BOTRUN…), with the chip on yet another row. Now one compact row below the title
+       * on every phone: on the 10, the chip and the game's own .modebar share a row (.fb-togglerow, below); on the
+       * 26, the modebar follows the chip onto the topbar's second line. Only our chip moves; the Free/Paid control,
+       * its markup and its listeners are the game's own and are never rewritten. */
+      '.fb-togglerow{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;align-self:center;max-width:100%}' +
+      '.fb-togglerow>.modebar{align-self:center;width:auto;max-width:100%}' +
+      '.fb-togglerow>.modebar .modepill{flex:0 0 auto;font-size:12.5px;padding:4px 14px}' +
+      '@media (max-width:560px) and (orientation:portrait){' +
+      '.topbar:has(.modebar):has(.fb-seed)::after{content:"";flex-basis:100%;order:97;height:0}' +
+      '.topbar .fb-seed{order:98}.topbar .modebar{order:99}}';   /* chip first, as on the separate-row games */
     document.head.appendChild(css);
     box = document.createElement('span');
     box.className = 'fb-seed';
@@ -606,6 +618,15 @@ canvas{ touch-action:none; }
       /* no topbar (a non-chassis game): append to the main column, still in
        * flow, so it lands under the controls rather than on top of them */
       (document.querySelector('.wrap') || document.body).appendChild(box);
+    }
+    /* the separate-row generation (.wrap > .modebar): chip and Free/Paid share ONE row (see the CSS above) */
+    var mb = document.querySelector('.wrap > .modebar');
+    if (mb && mb.parentNode) {
+      var row = document.createElement('div');
+      row.className = 'fb-togglerow';
+      mb.parentNode.insertBefore(row, mb);
+      row.appendChild(box);
+      row.appendChild(mb);
     }
     paint();
   }
