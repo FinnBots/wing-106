@@ -3882,7 +3882,7 @@ var FB_FAMILY_CODEC = (function(){
     hide(); }, 9000); })();
 })();
 </script>
-<script defer id="fb-beacon" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b11bf18cfe07453484c01ca2d417e772"}'></script>
+<script id="fb-beacon">(function(){try{if(/(?:^|;\s*)fb-me=1(?:;|$)/.test(document.cookie||''))return;}catch(e){}var s=document.createElement('script');s.defer=true;s.src='https://static.cloudflareinsights.com/beacon.min.js';s.setAttribute('data-cf-beacon','{"token": "b11bf18cfe07453484c01ca2d417e772"}');(document.body||document.documentElement).appendChild(s);})();</script>
 <script id="fb-analytics">
 /* ==========================================================================
    FinnBots ANALYTICS LAYER — how the games are PLAYED, counted, never who plays.
@@ -3940,6 +3940,8 @@ var FB_FAMILY_CODEC = (function(){
    loads and closes leaves no trace. Cloudflare's page views remain the "every load" number.
    ========================================================================== */
 (function(){
+  /* not on the Founder's own devices (2026-11-23): fb-me=1 (finnstergram.com/me/) — nothing is counted, nothing is sent */
+  try{ if(/(?:^|;\s*)fb-me=1(?:;|$)/.test(document.cookie||'')) return; }catch(e){}
   try{
     var END = 'https://finnbots-events.finnstergram.com/e';
     var host = String(location.hostname || '');
