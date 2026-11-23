@@ -3222,7 +3222,7 @@ if(!HEADLESS){
        site.js todayOf) — or the next one when today's is THIS game. Tagged ?from=site-outro so the report shows what it
        brought. Never above or instead of replay: the run's own hook stays first. SIX is generated from
        website/data/games.json by apply-outro.js and checked by sweep (a starter change = re-apply the roster). */
-    var SIX = [/*FB-SIX*/{ n:"HOPBOT", u:"https://hop.finnstergram.com" }, { n:"LINKBOT", u:"https://linkbot.finnstergram.com" }, { n:"BOTMAN", u:"https://botman.finnstergram.com" }, { n:"BOTWORD", u:"https://botword.finnstergram.com" }, { n:"Bot Jumper", u:"https://jump.finnstergram.com" }, { n:"SUMBOT", u:"https://sumbot.finnstergram.com" }/*/FB-SIX*/];
+    var SIX = [/*FB-SIX*/{ n:"HOPBOT", u:"https://hop.finnstergram.com" }, { n:"LINKBOT", u:"https://linkbot.finnstergram.com" }, { n:"Bot Smash", u:"https://smash.finnstergram.com" }, { n:"BOTWORD", u:"https://botword.finnstergram.com" }, { n:"Bot Jumper", u:"https://jump.finnstergram.com" }, { n:"SUMBOT", u:"https://sumbot.finnstergram.com" }/*/FB-SIX*/];
     var next = (function(){
       try{ var here = String(location.hostname || ''), d = Math.floor(Date.now() / 864e5);
         for(var k = 0; k < SIX.length; k++){ var g = SIX[(d + k) % SIX.length];
