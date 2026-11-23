@@ -3938,6 +3938,13 @@ var FB_FAMILY_CODEC = (function(){
    a mouse move, a touch, a key or a wheel (isTrusted - a script's synthetic event does not count). A person who
    looks and leaves still moves a pointer or a thumb, so the leak we need to see stays visible; a renderer that
    loads and closes leaves no trace. Cloudflare's page views remain the "every load" number.
+
+   v6 (2026-11-23; Founder: "Yes, build it" — growth review W47 pick 2): HOW LONG THEY STAYED. Finishing a run is the
+   only depth the counter had, and puzzle games rarely end one, so a child who left after 5 seconds and one who played
+   for 4 minutes looked the same. Each visit that touched the game now also counts whether it reached 30 SECONDS and
+   2 MINUTES of ACTIVE play (m). Active = the time between one real input and the next after the first touch, each gap
+   capped at 10 s, so a tab left open on an idle page never reaches a milestone. Two yes/no per visit, summed into the
+   day's pile; no time, no timestamp and no input ever leaves the device. Sent as v:5 (the Worker's version 5).
    ========================================================================== */
 (function(){
   /* not on the Founder's own devices (2026-11-23): fb-me=1 (finnstergram.com/me/) — nothing is counted, nothing is sent */
@@ -3949,7 +3956,7 @@ var FB_FAMILY_CODEC = (function(){
     if(!navigator.sendBeacon) return;
     var $ = function(id){ return document.getElementById(id); };
     var KEY = 'fb:' + host.split('.')[0] + ':counts';
-    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0, t:0, u:[0, 0, 0] }; };
+    var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0, t:0, u:[0, 0, 0], m:[0, 0] }; };
     var FIRST = 'fb:' + host.split('.')[0] + ':first';                    // the day this device first played here (never sent)
     var day = function(){ return new Date().toISOString().slice(0, 10); };
 
@@ -3989,7 +3996,7 @@ var FB_FAMILY_CODEC = (function(){
     })();
 
     /* this visit, as it happens */
-    var v = { s:0, r:0, p:0, f:0, q:0, t:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = false;
+    var v = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = false;
 
     /* 0. a PERSON is here (v5): any real input at all, chrome or game. Until then nothing is banked or sent. */
     var human = false;
@@ -4004,6 +4011,19 @@ var FB_FAMILY_CODEC = (function(){
     var dialog = function(){ return !!document.querySelector('.overlay.show, .sheet.show'); };
     addEventListener('keydown', function(){ if(!v.s && !dialog()) v.s = 1; }, true);
     addEventListener('pointerdown', function(e){ if(!v.s && !chrome(e && e.target)) v.s = 1; }, true);
+
+    /* 1b. HOW LONG THEY STAYED (v6): active play from the first touch — each gap between real inputs, capped at 10 s */
+    var active = 0, lastIn = 0, GAP = 10000;
+    var engage = function(e){
+      if(!v.s || (e && e.isTrusted === false)) return;
+      var t = Date.now();
+      if(lastIn && document.visibilityState !== 'hidden') active += Math.min(Math.max(t - lastIn, 0), GAP);
+      lastIn = t;
+      if(active >= 30000) v.a = 1;
+      if(active >= 120000) v.b = 1;
+    };
+    ['pointermove', 'pointerdown', 'touchstart', 'touchmove', 'keydown', 'wheel'].forEach(function(t){
+      addEventListener(t, engage, { capture:true, passive:true }); });
 
     /* 2. a run ended, 3. the paid panel opened — each a rising edge of .show */
     function edge(el, fn){
@@ -4023,7 +4043,8 @@ var FB_FAMILY_CODEC = (function(){
     function load(){
       try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null');
            if(o && o.c && typeof o.c.r === 'number'){ if(!o.ch || typeof o.ch !== 'object') o.ch = {};
-             if(typeof o.c.t !== 'number') o.c.t = 0; if(!Array.isArray(o.c.u) || o.c.u.length !== 3) o.c.u = [0, 0, 0]; return o; } }catch(e){}
+             if(typeof o.c.t !== 'number') o.c.t = 0; if(!Array.isArray(o.c.u) || o.c.u.length !== 3) o.c.u = [0, 0, 0];
+             if(!Array.isArray(o.c.m) || o.c.m.length !== 2) o.c.m = [0, 0]; return o; } }catch(e){}
       return { sent:'', c:ZERO(), ch:{} };
     }
     function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return localStorage.getItem(KEY) !== null; }catch(e){ return false; } }
@@ -4044,8 +4065,8 @@ var FB_FAMILY_CODEC = (function(){
     /* bank what this visit added since the last bank, then send the pile if today has not had a send */
     function flush(){
       if(!human) return;                                         // v5: no person seen - a page load is not a visit
-      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q, t:v.t - banked.t };
-      var any = d.s || d.r || d.p;
+      var d = { s:v.s - banked.s, r:v.r - banked.r, p:v.p - banked.p, f:v.f - banked.f, q:v.q - banked.q, t:v.t - banked.t, a:v.a - banked.a, b:v.b - banked.b };
+      var any = d.s || d.r || d.p || d.a || d.b;
       store = load();
       /* the channel pile: EVERY visit counts once (touched or not), then what it did */
       var key = chan;
@@ -4056,16 +4077,17 @@ var FB_FAMILY_CODEC = (function(){
       if(any){
         if(!visitBanked){ store.c.n++; visitBanked = true; }
         store.c.s += d.s; store.c.r += d.r; store.c.p += d.p; store.c.f += d.f; store.c.q += d.q; store.c.t += d.t;
+        store.c.m[0] += d.a; store.c.m[1] += d.b;
         cc[1] += d.s; cc[2] += d.r; cc[3] += d.f; cc[4] += d.t;
         if(v.s && !backBanked){ var bp = backPile(store.sent); if(bp !== null) store.c.u[bp]++; backBanked = true; }
-        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t };
+        banked = { s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t, a:v.a, b:v.b };
       }
       var kept = save(store);
       var c = store.c, visits = 0;
       for(var ck in store.ch) visits += store.ch[ck][0];
-      if(!(c.s || c.r || c.p) && !visits) return;
+      if(!(c.s || c.r || c.p || c.m[0]) && !visits) return;
       if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
-      var body = JSON.stringify({ v:4, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, t:c.t, u:c.u, ch:store.ch });
+      var body = JSON.stringify({ v:5, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, t:c.t, u:c.u, m:c.m, ch:store.ch });
       if(navigator.sendBeacon(END, body)){
         sentThisPage = true;
         store.sent = day(); store.c = ZERO(); store.ch = {}; save(store);
@@ -4075,7 +4097,7 @@ var FB_FAMILY_CODEC = (function(){
       if(document.visibilityState === 'hidden') flush();
     });
     addEventListener('pagehide', flush);
-    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t }, store:load() }; };
+    window.FB_ANALYTICS_STATE = function(){ return { dev:dev, visit:{ s:v.s, r:v.r, p:v.p, f:v.f, q:v.q, t:v.t, a:v.a, b:v.b, active:active }, store:load() }; };
   }catch(e){ /* analytics must never break a game */ }
 })();
 </script>
