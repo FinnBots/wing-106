@@ -2344,7 +2344,7 @@ if(!HEADLESS){
     function showPaidStart(){
       entrySig=null; pendingResult=null; busy=false; lockModeToggle(false);
       var ov=$('paidOverlay'); ov.classList.add('show');
-      ov.innerHTML='<div class="card"><h2>WINGBOT \u2014 PAID</h2><p>25 OIL entry \u00b7 one run (3 lives, no continues) \u00b7 fun leaderboard, not verified. Hold the bay against the swarm, dodge the tractor beam, fly a dual wing \u2014 holders \u00d71.5.</p>'+
+      ov.innerHTML='<div class="card"><h2>WINGBOT \u2014 PAID</h2><p>25 OIL entry \u00b7 one run (3 lives, no continues) \u00b7 fun leaderboard, not verified. Hold the bay against the swarm, dodge the tractor beam, fly a dual wing \u2014 holders also get their own Holders table.</p>'+
         '<button class="btn" id="paidPlayBtn">Play (25 OIL)</button></div>';
       $('paidPlayBtn').addEventListener('click', function(){ handleStart(); });
       relabelStart();
@@ -2436,7 +2436,7 @@ if(!HEADLESS){
   var facts=$('facts');
   var confirmSheet=$('confirmSheet');
   var FREE_FACTS='Free \u00b7 wallet-free \u00b7 pays nothing';
-  var PAID_FACTS='Paid \u00b7 25 OIL entry \u00b7 one run \u00b7 fun leaderboard (not verified) \u00b7 holders \u00d71.5';
+  var PAID_FACTS='Paid \u00b7 25 OIL entry \u00b7 one run \u00b7 fun leaderboard (not verified) \u00b7 same real score for everyone';
 
   function setMode(m){
     mode=m;
