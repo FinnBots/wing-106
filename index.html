@@ -3902,11 +3902,12 @@ var FB_FAMILY_CODEC = (function(){
      - no cookie, no ID: what it keeps on the device is a handful of COUNTS
        for this game, and the date it last sent them
 
-   AT MOST ONE REQUEST PER DEVICE PER DAY. Every request to the events Worker
+   AT MOST THREE REQUESTS PER DEVICE PER GAME PER DAY (v7, 2026-11-24; was one — see flush()), and only when there is
+   something NEW to send. Every request to the events Worker
    spends the account's FREE Workers allowance (100,000 a day), and that
    allowance is SHARED with the RPC Worker every paid entry needs. Real time is
    not wanted, so counts pile up on the device and leave once a day, on the
-   first page-hide of a new UTC day (or the first one ever). What is sent: the
+   first page-hide of a new UTC day, then on a later page-hide if new counts piled up. What is sent: the
    device class (phone / tablet / laptop) and, since the last send, how many
    visits there were, how many touched the game, how many runs ended, how many
    times the paid panel opened, and how many visits finished a run / opened the
@@ -3959,6 +3960,7 @@ var FB_FAMILY_CODEC = (function(){
     var ZERO = function(){ return { n:0, s:0, r:0, p:0, f:0, q:0, t:0, u:[0, 0, 0], m:[0, 0] }; };
     var FIRST = 'fb:' + host.split('.')[0] + ':first';                    // the day this device first played here (never sent)
     var day = function(){ return new Date().toISOString().slice(0, 10); };
+    var MAX_SENDS = 3;                                                   // v7: per device per game per UTC day
 
     var dev = (function(){
       var coarse = false;
@@ -3996,7 +3998,7 @@ var FB_FAMILY_CODEC = (function(){
     })();
 
     /* this visit, as it happens */
-    var v = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = false;
+    var v = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, banked = { s:0, r:0, p:0, f:0, q:0, t:0, a:0, b:0 }, visitBanked = false, chanBanked = false, backBanked = false, sentThisPage = 0;
 
     /* 0. a PERSON is here (v5): any real input at all, chrome or game. Until then nothing is banked or sent. */
     var human = false;
@@ -4086,10 +4088,14 @@ var FB_FAMILY_CODEC = (function(){
       var c = store.c, visits = 0;
       for(var ck in store.ch) visits += store.ch[ck][0];
       if(!(c.s || c.r || c.p || c.m[0]) && !visits) return;
-      if(kept ? store.sent === day() : sentThisPage) return;   // already sent today (or, unstored, this page)
+      /* v7 (2026-11-24, Founder: "Yes, fix it"): up to MAX_SENDS a day, each carrying only what is NEW. One send at the FIRST
+         page-hide lost every run a phone finished after an interruption (a notification, an app switch, the lock screen):
+         "played" left, the day was marked sent, and a one-time visitor's finish waited forever on a phone that never came back. */
+      if(kept ? (store.sent === day() && (store.k || 1) >= MAX_SENDS) : sentThisPage >= MAX_SENDS) return;
       var body = JSON.stringify({ v:5, d:dev, n:c.n, s:c.s, r:c.r, p:c.p, f:c.f, q:c.q, t:c.t, u:c.u, m:c.m, ch:store.ch });
       if(navigator.sendBeacon(END, body)){
-        sentThisPage = true;
+        sentThisPage++;
+        store.k = store.sent === day() ? (store.k || 1) + 1 : 1;
         store.sent = day(); store.c = ZERO(); store.ch = {}; save(store);
       }
     }
