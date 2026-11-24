@@ -3969,7 +3969,7 @@ var FB_FAMILY_CODEC = (function(){
     })();
 
     /* where this visit came from (see the header): a tag on our own links, else the referring site's name */
-    var TAGS = { x:1, discord:1, site:1, parents:1, holders:1, email:1, qr:1, bsky:1, tg:1, itch:1, masto:1 };   // + the automated channels (11-19)
+    var TAGS = { x:1, discord:1, site:1, parents:1, holders:1, email:1, qr:1, bsky:1, tg:1, itch:1, masto:1, tt:1, rd:1, hn:1, share:1 };   // + the automated channels (11-19); TikTok, Reddit, HN, shared results (11-24)
     var chan = (function(){
       var q = String(location.search || ''), m = /[?&]from=([^&#]*)/.exec(q);
       if(/[?&](phantom_action=|src=browse\b)/.test(q)) return 'wallet';            // a wallet return is the same visit coming back
